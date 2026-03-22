@@ -1,0 +1,256 @@
+/* REDESIGN UTILITIES & OVERRIDES */
+body {
+  font-family: var(--font-outfit), sans-serif !important;
+  background: var(--off-white) !important;
+}
+
+@font-face {
+  font-family: 'Ahsing';
+  src: url('/font/Ahsing-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+h1, h2, .nav-logo, .sticker, .hero-title {
+  font-family: 'Ahsing', sans-serif !important;
+  font-weight: normal !important;
+  letter-spacing: 0em;
+}
+
+h3, h4, .cart-item-name, .product-name, .admin-toolbar h3 {
+  font-family: var(--font-fredoka), sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em;
+}
+
+/* Color Remapping */
+:root {
+  --pink-secondary: #FDE8EC;
+  --pink-light: var(--pink) !important; /* Make the exact shade #FAD1D9 the most used */
+}
+.polka-bg { background-color: var(--pink-secondary) !important; }
+
+/* Wavy / Blob Dividers */
+.wavy-border-top {
+  position: relative;
+}
+.wavy-border-top::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: 0;
+  width: 100%;
+  height: 45px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320' preserveAspectRatio='none'%3E%3Cpath fill='%23FAD1D9' fill-opacity='1' d='M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E");
+  background-size: cover;
+  background-repeat: no-repeat;
+  z-index: 10;
+}
+
+/* Round Pill Buttons */
+.btn {
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 16px 32px !important;
+  box-shadow: 0 8px 0px rgba(0,0,0,0.1);
+  transition: transform 0.1s, box-shadow 0.1s !important;
+}
+.btn:active {
+  transform: translateY(4px) !important;
+  box-shadow: 0 4px 0px rgba(0,0,0,0.1) !important;
+}
+.btn-primary {
+  background-color: var(--brown) !important;
+  color: var(--white) !important;
+}
+.btn-secondary {
+  background-color: var(--pink) !important;
+  color: var(--brown) !important;
+  border: 2px solid var(--brown) !important;
+}
+
+/* Playful Badge / Sticker */
+.sticker {
+  position: absolute;
+  border-radius: 50%;
+  aspect-ratio: 1/1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-fredoka), sans-serif;
+  font-weight: 700;
+  color: var(--white);
+  box-shadow: 2px 4px 12px rgba(0,0,0,0.15);
+  transform: rotate(-10deg);
+  z-index: 10;
+  text-transform: uppercase;
+  line-height: 1.1;
+  padding: 15px;
+}
+.sticker.pink {
+  background-color: var(--pink-dark);
+}
+.sticker.brown {
+  background-color: var(--brown);
+  color: var(--pink-light);
+}
+
+/* Redesigned Product Cards (Bubbly) */
+.product-card {
+  border-radius: 30px !important;
+  border: 3px solid var(--white) !important;
+  box-shadow: 0 12px 24px rgba(99, 61, 45, 0.1) !important;
+  overflow: hidden;
+  background: var(--white);
+}
+.product-img-wrapper {
+  background: var(--pink-light) !important;
+  border-bottom: 3px dashed var(--pink-dark);
+  border-radius: 0 0 20px 20px;
+  height: 240px !important;
+}
+.product-img-wrapper img {
+  transform: scale(1.1) rotate(5deg);
+  filter: drop-shadow(0px 15px 15px rgba(99, 61, 45, 0.2));
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+.product-card:hover .product-img-wrapper img {
+  transform: scale(1.2) rotate(0deg) translateY(-10px) !important;
+}
+
+.product-info {
+  background: var(--white) !important;
+  padding: 24px !important;
+}
+
+/* Grid Override for Centered Tiles */
+.shop-grid, .featured-grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  gap: 40px !important;
+}
+.product-card {
+  flex: 0 1 320px !important;
+  width: 100% !important;
+}
+
+/* Nav Overrides */
+.navbar {
+  border-bottom: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding-top: 15px;
+}
+.navbar.scrolled {
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 8px 32px rgba(99, 61, 45, 0.1) !important;
+  border-radius: 0 0 40px 40px;
+}
+.nav-links a {
+  font-family: var(--font-fredoka), sans-serif !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  font-size: 1rem !important;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+.nav-links a.active, .nav-links a:hover {
+  background: var(--brown) !important;
+  color: var(--pink-light) !important;
+  border-radius: 50px !important;
+}
+.nav-left {
+  justify-content: flex-end !important;
+  padding-right: 120px;
+}
+.nav-right {
+  justify-content: flex-start !important;
+  padding-left: 120px;
+}
+@media (max-width: 968px) {
+  .nav-left, .nav-right { padding: 0 !important; }
+  .nav-links.open {
+    justify-content: center !important;
+    align-items: center !important;
+  }
+}
+
+/* Footer Overrides */
+.footer {
+  border-top: none !important;
+  padding-top: 100px !important;
+}
+
+.hero-blob {
+  position: absolute;
+  top: -10%;
+  right: -5%;
+  width: 60%;
+  height: 120%;
+  background: var(--pink);
+  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  animation: blob-bounce 10s infinite alternate;
+  z-index: 0;
+}
+@keyframes blob-bounce {
+  0% { border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; transform: rotate(0deg); }
+  100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(5deg); }
+}
+
+/* Additional UI Elements (Cart, Login, Admin) */
+.cart-item, .cart-summary, .login-card, .admin-product-card, .admin-order-card, .stat-card, .modal {
+  border-radius: 30px !important;
+  border: 3px solid var(--white) !important;
+  box-shadow: 0 12px 24px rgba(99, 61, 45, 0.1) !important;
+}
+.cart-summary h3, .modal h2, .login-card h2, .admin-toolbar h3 {
+  font-family: var(--font-fredoka) !important;
+}
+
+/* Fix Stock Badge Depth & Size */
+.product-stock-badge {
+  font-size: 0.65rem !important;
+  padding: 4px 10px !important;
+  z-index: 20 !important;
+}
+
+/* Fix Admin Pages Overlap */
+.admin-page, .admin-login-page {
+  padding-top: 140px !important;
+}
+
+/* INCREASE BROWN ACCENTS */
+.product-img-wrapper {
+  border-bottom: 4px dashed var(--brown) !important;
+}
+.btn-primary {
+  background: var(--brown) !important;
+  color: var(--white) !important;
+  box-shadow: 0 6px 15px rgba(99, 61, 45, 0.3) !important;
+  border: 2px solid transparent !important;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background: var(--brown) !important;
+  color: var(--pink-light) !important;
+  border: 2px solid var(--pink-light) !important;
+  box-shadow: 0 10px 20px rgba(99, 61, 45, 0.45) !important;
+}
+
+/* EVEN MORE BROWN ACCENTS */
+.product-card {
+  border: 4px solid var(--brown) !important;
+}
+.cart-item, .cart-summary, .login-card, .admin-product-card, .admin-order-card, .stat-card, .modal {
+  border: 4px solid var(--brown) !important;
+}
+.footer {
+  background: var(--brown) !important;
+  color: var(--pink-light) !important;
+}
+.footer p, .footer a { color: var(--pink-light) !important; }
+.footer h4 { color: var(--pink) !important; }
