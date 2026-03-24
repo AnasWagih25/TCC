@@ -25,9 +25,8 @@ export default function Cart() {
     subtotal += item.price * item.quantity;
   });
 
-  const tax = subtotal * 0.08;
-  const delivery = subtotal > 30 ? 0 : 5.00;
-  const total = subtotal + tax + delivery;
+  const delivery = 70;
+  const total = subtotal + delivery;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,13 +79,10 @@ export default function Cart() {
                     <span>Subtotal</span>
                     <span>EGP {subtotal.toFixed(2)}</span>
                   </div>
-                  <div className="summary-row">
-                    <span>Tax (8%)</span>
-                    <span>EGP {tax.toFixed(2)}</span>
-                  </div>
+
                   <div className="summary-row">
                     <span>Delivery</span>
-                    <span>{delivery === 0 ? 'Free' : `EGP ${delivery.toFixed(2)}`}</span>
+                    <span>EGP {delivery.toFixed(2)}</span>
                   </div>
                   <div style={{
                     display: 'flex',

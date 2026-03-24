@@ -157,9 +157,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     
     let subtotal = 0;
     cart.forEach(item => subtotal += item.price * item.quantity);
-    const tax = subtotal * 0.08;
-    const delivery = subtotal > 30 ? 0 : 5.00;
-    const total = subtotal + tax + delivery;
+    const delivery = 70;
+    const total = subtotal + delivery;
 
     const newOrder: Order = {
       id: orderId,
