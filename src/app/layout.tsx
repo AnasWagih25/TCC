@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${outfit.variable} ${fredoka.variable}`}>
+      <body suppressHydrationWarning className={`${outfit.variable} ${fredoka.variable}`}>
         <LoadingScreen />
         <AuthProvider>
           <CartProvider>

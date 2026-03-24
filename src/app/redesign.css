@@ -137,6 +137,7 @@ h3, h4, .cart-item-name, .product-name, .admin-toolbar h3 {
 .product-card {
   flex: 0 1 320px !important;
   width: 100% !important;
+  max-width: 100% !important;
 }
 
 /* Nav Overrides */
@@ -177,6 +178,65 @@ h3, h4, .cart-item-name, .product-name, .admin-toolbar h3 {
   .nav-links.open {
     justify-content: center !important;
     align-items: center !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .btn {
+    padding: 10px 16px !important;
+    font-size: 0.74rem !important;
+    letter-spacing: 0.4px;
+  }
+
+  .nav-links a,
+  .mobile-nav-links a {
+    font-size: 0.84rem !important;
+  }
+
+  /* Override desktop rule: 40px gap caused huge vertical spacing on phones */
+  .shop-grid,
+  .featured-grid {
+    gap: 10px !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+  }
+
+  .product-card {
+    flex: 0 1 auto !important;
+    width: 100% !important;
+    max-width: min(100%, 380px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    border-width: 3px !important;
+    border-radius: 20px !important;
+  }
+
+  .product-img-wrapper {
+    height: 180px !important;
+  }
+
+  .product-info {
+    padding: 12px !important;
+  }
+
+  .footer {
+    padding-top: 36px !important;
+    padding-bottom: 18px !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .btn {
+    padding: 9px 14px !important;
+    font-size: 0.68rem !important;
+  }
+
+  .product-card {
+    border-radius: 16px !important;
+  }
+
+  .product-img-wrapper {
+    height: 165px !important;
   }
 }
 

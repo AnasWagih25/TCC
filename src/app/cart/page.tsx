@@ -24,7 +24,7 @@ export default function Cart() {
   cart.forEach((item) => {
     subtotal += item.price * item.quantity;
   });
-  
+
   const tax = subtotal * 0.08;
   const delivery = subtotal > 30 ? 0 : 5.00;
   const total = subtotal + tax + delivery;
@@ -43,7 +43,7 @@ export default function Cart() {
           <div className="section-header">
             <h2 className="section-title">Your Cart</h2>
           </div>
-          
+
           <div id="cartContent">
             {cart.length === 0 ? (
               <div className="cart-empty">
@@ -73,7 +73,7 @@ export default function Cart() {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="cart-summary">
                   <h3>Order Summary</h3>
                   <div className="summary-row">
@@ -88,12 +88,40 @@ export default function Cart() {
                     <span>Delivery</span>
                     <span>{delivery === 0 ? 'Free' : `EGP ${delivery.toFixed(2)}`}</span>
                   </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    margin: '8px 0 12px',
+                    padding: '10px 12px',
+                    border: '1px solid var(--brown-light)',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(var(--brown-light-rgb, 180,140,100), 0.08)',
+                    fontSize: '0.85rem',
+                    color: 'var(--brown)',
+                    lineHeight: 1.4,
+                  }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--brown)',
+                      color: '#fff',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}>!</span>
+                    <span style={{ fontWeight: 600 }}>Next-day delivery (12 PM – 7 PM)</span>
+                  </div>
                   <div className="summary-row total">
                     <span>Total</span>
                     <span>EGP {total.toFixed(2)}</span>
                   </div>
-                  <button 
-                    className="btn btn-primary" 
+                  <button
+                    className="btn btn-primary"
                     style={{ width: '100%', marginTop: '20px' }}
                     onClick={() => setIsCheckoutOpen(true)}
                   >
@@ -112,60 +140,60 @@ export default function Cart() {
           <button className="modal-close" onClick={() => setIsCheckoutOpen(false)} aria-label="Close modal">&times;</button>
           <h2>Complete Your Order</h2>
           <p className="modal-subtitle">Please enter your delivery details below.</p>
-          
+
           <form onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="cxName">Full Name *</label>
-                <input 
-                  type="text" 
-                  id="cxName" 
-                  required 
+                <input
+                  type="text"
+                  id="cxName"
+                  required
                   placeholder="Jane Doe"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="form-group">
                 <label htmlFor="cxPhone">Phone Number *</label>
-                <input 
-                  type="tel" 
-                  id="cxPhone" 
-                  required 
+                <input
+                  type="tel"
+                  id="cxPhone"
+                  required
                   placeholder="+1 (555) 000-0000"
                   value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
               </div>
             </div>
             <div className="form-group">
               <label htmlFor="cxEmail">Email Address *</label>
-              <input 
-                type="email" 
-                id="cxEmail" 
+              <input
+                type="email"
+                id="cxEmail"
                 required
                 placeholder="jane@example.com"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
             <div className="form-group">
               <label htmlFor="cxAddress">Delivery Address *</label>
-              <textarea 
-                id="cxAddress" 
-                required 
+              <textarea
+                id="cxAddress"
+                required
                 placeholder="Street address, apartment, suite..."
                 value={formData.address}
-                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               />
             </div>
             <div className="form-group">
               <label htmlFor="cxNotes">Order Notes (Optional)</label>
-              <textarea 
-                id="cxNotes" 
+              <textarea
+                id="cxNotes"
                 placeholder="Special delivery instructions or allergies..."
                 value={formData.notes}
-                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               />
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>

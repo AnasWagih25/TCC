@@ -32,7 +32,7 @@ export default function Navbar() {
       <div className="nav-container">
 
         <div className="nav-left">
-          <ul className={`nav-links ${isMenuOpen ? 'open' : ''}`} id="navLinksLeft">
+          <ul className="nav-links" id="navLinksLeft">
             <li>
               <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
                 Home
@@ -65,7 +65,12 @@ export default function Navbar() {
         </button>
 
         <div className="nav-right">
-          <ul className={`nav-links ${isMenuOpen ? 'open' : ''}`} id="navLinksRight">
+          <ul className="nav-links" id="navLinksRight">
+            <li>
+              <Link href="/about" className={`nav-link ${pathname === '/about' ? 'active' : ''}`}>
+                About
+              </Link>
+            </li>
             <li>
               <Link href="/cart" className={`nav-link cart-link ${pathname === '/cart' ? 'active' : ''}`}>
                 Cart
@@ -75,6 +80,30 @@ export default function Navbar() {
           </ul>
         </div>
       </div>
+
+      <ul className={`mobile-nav-links ${isMenuOpen ? 'open' : ''}`} id="navLinksMobile">
+        <li>
+          <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
+            Home
+          </Link>
+        </li>
+        <li>
+          <Link href="/shop" className={`nav-link ${pathname === '/shop' ? 'active' : ''}`}>
+            Shop
+          </Link>
+        </li>
+        <li>
+          <Link href="/about" className={`nav-link ${pathname === '/about' ? 'active' : ''}`}>
+            About
+          </Link>
+        </li>
+        <li>
+          <Link href="/cart" className={`nav-link cart-link ${pathname === '/cart' ? 'active' : ''}`}>
+            Cart
+            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
+          </Link>
+        </li>
+      </ul>
     </nav>
   );
 }
