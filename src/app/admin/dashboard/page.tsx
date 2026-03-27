@@ -9,12 +9,20 @@ import { Cookie, TrendingUp, Package } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
-  const { products, orders, updateProduct, deleteProduct, markOrderFulfilled } = useCart();
+  const { products, orders, updateProduct, deleteProduct, markOrderFulfilled, addManualOrder, deleteOrder } = useCart();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState('');
+  const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
+  const [manualOrderData, setManualOrderData] = useState({
+    customerName: '',
+    total: '',
+    productId: '',
+    quantity: '',
+    notes: ''
+  });
   
   // Product Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,6 +79,39 @@ export default function AdminDashboard() {
     
     updateProduct(newProduct);
     setIsModalOpen(false);
+  };
+
+  const handleCreateManualOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    const total = parseFloat(manualOrderData.total);
+    const quantity = parseInt(manualOrderData.quantity, 10);
+
+    if (!manualOrderData.productId) {
+      alert('Please select a product.');
+      return;
+    }
+
+    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
+      alert('Please enter a valid total and quantity.');
+      return;
+    }
+
+    addManualOrder({
+      customerName: manualOrderData.customerName,
+      total,
+      productId: manualOrderData.productId,
+      quantity,
+      notes: manualOrderData.notes
+    });
+
+    setManualOrderData({
+      customerName: '',
+      total: '',
+      productId: '',
+      quantity: '',
+      notes: ''
+    });
+    setIsManualOrderModalOpen(false);
   };
 
   return (
@@ -186,6 +227,7 @@ export default function AdminDashboard() {
 
               <div className="admin-toolbar">
                 <h3>Recent Orders</h3>
+                <button className="btn btn-sm btn-primary" onClick={() => setIsManualOrderModalOpen(true)}>+ Add Manual Order</button>
               </div>
 
               <div className="admin-orders-list">
@@ -201,6 +243,11 @@ export default function AdminDashboard() {
                         <div className="order-header">
                           <div className="order-id">
                             {o.id} <span style={{ fontSize: '0.8rem', color: 'var(--gray)', fontFamily: '"Inter", sans-serif', fontWeight: 'normal', marginLeft: '10px' }}>{date}</span>
+                            {o.source === 'manual' && (
+                              <span style={{ marginLeft: '10px', fontSize: '0.72rem', background: 'var(--pink-light)', color: 'var(--brown)', padding: '3px 8px', borderRadius: '999px', fontFamily: '"Inter", sans-serif' }}>
+                                Manual Sale
+                              </span>
+                            )}
                           </div>
                           <span className={`order-status status-${o.status}`}>{isPending ? 'Pending' : 'Fulfilled'}</span>
                         </div>
@@ -240,6 +287,11 @@ export default function AdminDashboard() {
                           ) : (
                             <button className="btn btn-sm btn-secondary" disabled>Fulfilled</button>
                           )}
+                          <button className="btn btn-sm btn-secondary" onClick={() => {
+                            if (confirm(`Delete order ${o.id}? This cannot be undone.`)) deleteOrder(o.id);
+                          }}>
+                            Delete Order
+                          </button>
                         </div>
                       </div>
                     );
@@ -334,6 +386,78 @@ export default function AdminDashboard() {
               />
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>Save Product</button>
+          </form>
+        </div>
+      </div>
+
+      {/* Manual Order Modal */}
+      <div className={`modal-overlay ${isManualOrderModalOpen ? 'active' : ''}`}>
+        <div className="modal">
+          <button className="modal-close" onClick={() => setIsManualOrderModalOpen(false)}>&times;</button>
+          <h2>Add Manual Order</h2>
+
+          <form onSubmit={handleCreateManualOrder}>
+            <div className="form-group">
+              <label>Customer Name</label>
+              <input
+                type="text"
+                placeholder="Walk-in Customer"
+                value={manualOrderData.customerName}
+                onChange={e => setManualOrderData({ ...manualOrderData, customerName: e.target.value })}
+              />
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Product Sold *</label>
+                <select
+                  required
+                  value={manualOrderData.productId}
+                  onChange={e => setManualOrderData({ ...manualOrderData, productId: e.target.value })}
+                >
+                  <option value="">Select a product</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Total Revenue (EGP) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0.01"
+                  step="0.01"
+                  value={manualOrderData.total}
+                  onChange={e => setManualOrderData({ ...manualOrderData, total: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Quantity Sold *</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="1"
+                  value={manualOrderData.quantity}
+                  onChange={e => setManualOrderData({ ...manualOrderData, quantity: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Notes</label>
+              <textarea
+                placeholder="e.g. Phone order paid cash"
+                value={manualOrderData.notes}
+                onChange={e => setManualOrderData({ ...manualOrderData, notes: e.target.value })}
+              />
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>
+              Save Manual Order
+            </button>
           </form>
         </div>
       </div>

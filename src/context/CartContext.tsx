@@ -26,6 +26,7 @@ export type CartItem = Omit<Product, 'price'> & {
 export type Order = {
   id: string;
   date: string;
+  source?: 'web' | 'manual';
   customer: {
     name: string;
     phone: string;
@@ -56,6 +57,8 @@ type CartContextType = {
   updateProduct: (product: Product) => void;
   deleteProduct: (index: number) => void;
   markOrderFulfilled: (index: number) => void;
+  addManualOrder: (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => string;
+  deleteOrder: (orderId: string) => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -208,6 +211,46 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setOrders(newOrders);
   };
 
+  const addManualOrder = (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => {
+    const orderId = 'MAN-' + Math.floor(100000 + Math.random() * 900000);
+    const selectedProduct = products.find(p => p.id === data.productId);
+    const itemPrice = data.quantity > 0 ? data.total / data.quantity : data.total;
+
+    const manualOrder: Order = {
+      id: orderId,
+      date: new Date().toISOString(),
+      source: 'manual',
+      customer: {
+        name: data.customerName.trim() || 'Walk-in Customer',
+        phone: '-',
+        email: 'manual-order@offline.local',
+        address: 'Offline sale',
+        notes: data.notes?.trim() || 'Added manually by staff.'
+      },
+      items: [
+        {
+          id: selectedProduct?.id || 'manual-item',
+          name: selectedProduct?.name || 'Manual Sale',
+          description: selectedProduct?.description || 'Offline sale added by admin',
+          stock: 0,
+          image: selectedProduct?.image || 'manual.png',
+          selectedSize: 'Normal',
+          price: itemPrice,
+          quantity: data.quantity
+        }
+      ],
+      total: data.total,
+      status: 'fulfilled'
+    };
+
+    setOrders([manualOrder, ...orders]);
+    return orderId;
+  };
+
+  const deleteOrder = (orderId: string) => {
+    setOrders(orders.filter(order => order.id !== orderId));
+  };
+
   // Don't render children until we've loaded from localStorage to avoid hydration mismatch
   if (!isLoaded) return <div style={{ height: '100vh', background: '#FDE8EC' }}></div>;
 
@@ -215,7 +258,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     <CartContext.Provider value={{
       products, cart, orders, 
       addToCart, updateQuantity, removeFromCart, placeOrder,
-      updateProduct, deleteProduct, markOrderFulfilled
+      updateProduct, deleteProduct, markOrderFulfilled, addManualOrder, deleteOrder
     }}>
       {children}
     </CartContext.Provider>

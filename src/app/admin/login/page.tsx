@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { FirebaseError } from 'firebase/app';
 import { Lock } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
@@ -32,13 +33,35 @@ export default function AdminLogin() {
     setIsSubmitting(true);
     setError('');
 
+    const normalizedEmail = email.trim();
+    const normalizedPassword = password.trim();
+
+    if (!normalizedEmail || !normalizedPassword) {
+      setError('Email and password are required.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
       // Auth context listens to onAuthStateChanged, so it handles the layout state
       router.push('/admin/dashboard');
-    } catch (err: any) {
-      console.error(err);
-      setError('Invalid credentials. Please verify your staff access.');
+    } catch (err: unknown) {
+      if (err instanceof FirebaseError) {
+        if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+          setError('Login failed. Check email/password, and ensure Email/Password sign-in is enabled in Firebase Auth.');
+        } else if (err.code === 'auth/invalid-email') {
+          setError('Please enter a valid email address.');
+        } else if (err.code === 'auth/too-many-requests') {
+          setError('Too many failed attempts. Please wait a bit and try again.');
+        } else {
+          console.error(err);
+          setError(`Login failed (${err.code}).`);
+        }
+      } else {
+        console.error(err);
+        setError('Login failed. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
