@@ -42,7 +42,7 @@ export type Order = {
 const defaultProducts: Product[] = [
   { id: 'p1', name: 'Classic Belgian Milk Chocolate', description: 'Our signature cookie cake loaded with Belgian milk chocolate chunks.', price: { normal: 399, mini: 250 }, stock: 50, image: 'classic1.png', images: ['classic1.png', 'classic2.png'] },
   { id: 'p2', name: 'Double Chocolate', description: 'For the ultimate chocolate lover. Dark cocoa dough with semi-sweet chocolate.', price: { normal: 399, mini: 250 }, stock: 40, image: 'double.png', images: ['double.png'] },
-  { id: 'p3', name: 'Kinder Chocolate', description: 'Rich dough packed with Kinder chocolate bars and a creamy center.', price: { normal: 499, mini: 300 }, stock: 35, image: 'kinder 1.png', images: ['kinder 1.png', 'kinder2.png'] },
+  { id: 'p3', name: 'Kinder Chocolate', description: 'Rich dough packed with Kinder chocolate bars and a creamy center.', price: { normal: 499, mini: 300 }, stock: 35, image: 'kinder 1.png', images: ['kinder 1.png'] },
   { id: 'p4', name: "M&M's Chocolate", description: 'Fun, colorful, and delicious. Loaded with classic M&M candies.', price: { normal: 499, mini: 260 }, stock: 45, image: 'mm1.png', images: ['mm1.png', 'mm2.png'] }
 ];
 
@@ -78,9 +78,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('tcc_cart');
       localStorage.setItem('tcc_version', '2.2');
     }
-
     const savedProducts = localStorage.getItem('tcc_products');
-    setProducts(savedProducts ? JSON.parse(savedProducts) : defaultProducts);
+    let loadedProducts = savedProducts ? JSON.parse(savedProducts) : defaultProducts;
+    
+    // Quick migration to remove the broken kinder2.png image from the Kinder cookie
+    if (loadedProducts) {
+      loadedProducts = loadedProducts.map((p: Product) => {
+        if (p.id === 'p3' && p.images && p.images.length > 1) {
+          // If it's the default kinder cookie and it still has the second image, force it to 1 image
+          const hasBrokenImage = p.images.some(img => img.includes('kinder2'));
+          if (hasBrokenImage) {
+            return { ...p, images: [p.images[0]] };
+          }
+        }
+        return p;
+      });
+    }
+
+    setProducts(loadedProducts);
     
     const savedCart = localStorage.getItem('tcc_cart');
     if (savedCart) setCart(JSON.parse(savedCart));
@@ -93,15 +108,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Save to localStorage when state changes (only after initial load)
   useEffect(() => {
-    if (isLoaded) localStorage.setItem('tcc_products', JSON.stringify(products));
+    if (isLoaded) {
+      try {
+        localStorage.setItem('tcc_products', JSON.stringify(products));
+      } catch (e) {
+        console.error('Failed to save products to localStorage', e);
+        alert('Failed to save to local storage! The image might still be too large.');
+      }
+    }
   }, [products, isLoaded]);
 
   useEffect(() => {
-    if (isLoaded) localStorage.setItem('tcc_cart', JSON.stringify(cart));
+    if (isLoaded) {
+      try {
+        localStorage.setItem('tcc_cart', JSON.stringify(cart));
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }, [cart, isLoaded]);
 
   useEffect(() => {
-    if (isLoaded) localStorage.setItem('tcc_orders', JSON.stringify(orders));
+    if (isLoaded) {
+      try {
+        localStorage.setItem('tcc_orders', JSON.stringify(orders));
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }, [orders, isLoaded]);
 
   const addToCart = (productId: string, size: 'Normal' | 'Mini') => {

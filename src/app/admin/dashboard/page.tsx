@@ -6,6 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { useCart, Product } from '@/context/CartContext';
 import { Cookie, TrendingUp, Package } from 'lucide-react';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '@/lib/cropImage';
 
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
@@ -30,6 +32,44 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({
     name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: 'chocolate_chip.png'
   });
+
+  // Cropper State
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const [isCropping, setIsCropping] = useState(false);
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setImageSrc(reader.result?.toString() || null);
+        setIsCropping(true);
+      });
+      reader.readAsDataURL(file);
+    }
+    // Reset file input so the same file can be selected again
+    e.target.value = '';
+  };
+
+  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  const showCroppedImage = async () => {
+    try {
+      if (!imageSrc || !croppedAreaPixels) return;
+      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
+      setFormData({ ...formData, image: croppedImage });
+      setIsCropping(false);
+      setImageSrc(null);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to crop image');
+    }
+  };
 
   // Protect Route
   useEffect(() => {
@@ -74,7 +114,8 @@ export default function AdminDashboard() {
         mini: parseFloat(formData.priceMini) || 0
       },
       stock: parseInt(formData.stock, 10),
-      image: formData.image
+      image: formData.image,
+      images: [formData.image]
     };
     
     updateProduct(newProduct);
@@ -312,7 +353,7 @@ export default function AdminDashboard() {
                 ) : (
                   products.map((p, index) => (
                     <div key={p.id} className="admin-product-card">
-                      <img src={`/images/${p.image}`} alt={p.name} className="admin-product-img" />
+                      <img src={p.image.startsWith('data:') ? p.image : `/images/${p.image}`} alt={p.name} className="admin-product-img" />
                       <div className="admin-product-info">
                         <h4>{p.name}</h4>
                         <div className="price">Normal: EGP {p.price.normal.toFixed(2)} | Mini: EGP {p.price.mini.toFixed(2)}</div>
@@ -373,16 +414,19 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="form-group">
-              <label>Image Filename</label>
+              <label>Product Image</label>
               <p style={{ fontSize: '0.75rem', color: 'var(--brown-light)', margin: '2px 0 8px' }}>
-                Required format: <strong>1024x1024px Transparent PNG</strong>. Place your image file inside the <code>public/images/</code> folder and enter the exact filename below (e.g., <code>new_cookie.png</code>).
+                Upload an image. You can crop it to be a perfect square.
               </p>
+              {formData.image && (
+                <div style={{ marginBottom: '10px' }}>
+                  <img src={formData.image.startsWith('data:') ? formData.image : `/images/${formData.image}`} alt="Preview" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--brown-light)' }} />
+                </div>
+              )}
               <input 
-                type="text" 
-                required 
-                placeholder="e.g. chocolate_chip.png"
-                value={formData.image} 
-                onChange={e => setFormData({...formData, image: e.target.value})} 
+                type="file" 
+                accept="image/*"
+                onChange={onFileChange} 
               />
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>Save Product</button>
@@ -461,6 +505,42 @@ export default function AdminDashboard() {
           </form>
         </div>
       </div>
+      {/* Cropper Modal */}
+      {isCropping && imageSrc && (
+        <div className="modal-overlay active" style={{ zIndex: 1000 }}>
+          <div className="modal" style={{ width: '90%', maxWidth: '600px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <button className="modal-close" onClick={() => { setIsCropping(false); setImageSrc(null); }}>&times;</button>
+            <h2>Crop Image</h2>
+            <div style={{ position: 'relative', flex: 1, width: '100%', background: '#333', marginTop: '20px', borderRadius: '8px', overflow: 'hidden' }}>
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            <div style={{ padding: '20px 0', display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <label>Zoom</label>
+              <input
+                type="range"
+                value={zoom}
+                min={1}
+                max={3}
+                step={0.1}
+                aria-labelledby="Zoom"
+                onChange={(e) => setZoom(Number(e.target.value))}
+                style={{ flex: 1 }}
+              />
+            </div>
+            <button type="button" className="btn btn-primary" onClick={showCroppedImage} style={{ width: '100%' }}>
+              Confirm Crop
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

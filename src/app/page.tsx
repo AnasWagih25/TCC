@@ -33,7 +33,7 @@ export default function Home() {
           </div>
           <div className="hero-image-presentation" style={{ zIndex: 10 }}>
             <div className="hero-arch" style={{ background: 'var(--brown)' }}></div>
-            <img src="/images/classic1.png" alt="Premium Artisan Cookie" className="hero-cookie-premium" style={{ transform: 'rotate(15deg)' }} />
+            <img src="/images/preview.png" alt="Premium Artisan Cookie" className="hero-cookie-premium" style={{ transform: 'rotate(15deg)' }} />
             <div className="sticker pink" style={{ bottom: '10%', right: '10%', transform: 'rotate(-5deg)', width: '120px', fontSize: '1.2rem' }}>LOVE AT<br/>FIRST<br/>BITE</div>
           </div>
         </div>
