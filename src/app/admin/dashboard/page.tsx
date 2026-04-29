@@ -4,14 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { updateProfile } from 'firebase/auth';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { storage } from '@/lib/firebase';
 import { useCart, Product } from '@/context/CartContext';
-import { Cookie, TrendingUp, Package } from 'lucide-react';
+import { Cookie, TrendingUp, Package, Image as ImageIcon } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
-  const { products, orders, updateProduct, deleteProduct, markOrderFulfilled, addManualOrder, deleteOrder } = useCart();
+  const { products, orders, heroImage, updateHeroImage, updateProduct, deleteProduct, markOrderFulfilled, addManualOrder, deleteOrder } = useCart();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
@@ -39,6 +41,8 @@ export default function AdminDashboard() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [cropTarget, setCropTarget] = useState<'product' | 'hero'>('product');
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -61,13 +65,26 @@ export default function AdminDashboard() {
   const showCroppedImage = async () => {
     try {
       if (!imageSrc || !croppedAreaPixels) return;
-      const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
-      setFormData({ ...formData, image: croppedImage });
+      setIsUploading(true);
+      const croppedImageBase64 = await getCroppedImg(imageSrc, croppedAreaPixels);
+      
+      const storageRef = ref(storage, `images/${Date.now()}.png`);
+      await uploadString(storageRef, croppedImageBase64, 'data_url');
+      const url = await getDownloadURL(storageRef);
+
+      if (cropTarget === 'hero') {
+        await updateHeroImage(url);
+      } else {
+        setFormData({ ...formData, image: url });
+      }
+
+      setIsUploading(false);
       setIsCropping(false);
       setImageSrc(null);
     } catch (e) {
+      setIsUploading(false);
       console.error(e);
-      alert('Failed to crop image');
+      alert('Failed to crop and upload image');
     }
   };
 
@@ -304,6 +321,27 @@ export default function AdminDashboard() {
                             {o.customer.address}<br/>
                             <span style={{ color: 'var(--pink-dark)', fontStyle: 'italic' }}>{o.customer.notes || 'No special notes'}</span>
                           </div>
+                          {o.customer.location && (
+                            <div className="order-detail-item">
+                              <strong>Location Pin</strong>
+                              <div style={{ marginTop: '4px' }}>
+                                <a 
+                                  href={`https://www.google.com/maps/search/?api=1&query=${o.customer.location?.lat},${o.customer.location?.lng}`}
+                                  target="_blank" 
+                                  rel="noreferrer"
+                                  style={{ color: 'var(--brown)', textDecoration: 'underline', fontWeight: 500 }}
+                                >
+                                  View on Google Maps
+                                </a>
+                                <button 
+                                  onClick={() => navigator.clipboard.writeText(`https://www.google.com/maps/search/?api=1&query=${o.customer.location?.lat},${o.customer.location?.lng}`)}
+                                  className="btn btn-sm btn-secondary" style={{ marginLeft: '10px', padding: '4px 8px', fontSize: '0.75rem' }}
+                                >
+                                  Copy Link
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div className="order-items-list">
                           <h4>Order Items</h4>
@@ -313,7 +351,11 @@ export default function AdminDashboard() {
                               <span>EGP {(item.price * item.quantity).toFixed(2)}</span>
                             </div>
                           ))}
-                          <div className="order-product-row" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #ccc', fontWeight: 'bold' }}>
+                          <div className="order-product-row" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #ccc' }}>
+                            <span>Delivery Fee</span>
+                            <span>EGP {o.deliveryFee?.toFixed(2) || '70.00'}</span>
+                          </div>
+                          <div className="order-product-row" style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #eee', fontWeight: 'bold' }}>
                             <span>Total</span>
                             <span>EGP {o.total.toFixed(2)}</span>
                           </div>
@@ -342,10 +384,21 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <div className="admin-panel active">
-              <div className="admin-toolbar">
-                <h3>Inventory Management</h3>
-                <button className="btn btn-sm btn-primary" onClick={handleOpenAddModal}>+ Add Product</button>
+              <div className="admin-toolbar" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                  <h3>Inventory & Content</h3>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className="btn btn-sm btn-secondary" onClick={() => {
+                    setCropTarget('hero');
+                    document.getElementById('hiddenFileInput')?.click();
+                  }}>
+                    <ImageIcon size={16} style={{ marginRight: '6px' }} /> Update Hero Image
+                  </button>
+                  <button className="btn btn-sm btn-primary" onClick={handleOpenAddModal}>+ Add Product</button>
+                </div>
               </div>
+              <input type="file" id="hiddenFileInput" accept="image/*" style={{ display: 'none' }} onChange={onFileChange} />
               
               <div className="admin-products-grid">
                 {products.length === 0 ? (
@@ -423,11 +476,16 @@ export default function AdminDashboard() {
                   <img src={formData.image.startsWith('data:') ? formData.image : `/images/${formData.image}`} alt="Preview" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--brown-light)' }} />
                 </div>
               )}
-              <input 
-                type="file" 
-                accept="image/*"
-                onChange={onFileChange} 
-              />
+              <button 
+                type="button" 
+                className="btn btn-sm btn-secondary" 
+                onClick={() => {
+                  setCropTarget('product');
+                  document.getElementById('hiddenFileInput')?.click();
+                }}
+              >
+                Upload & Crop Image
+              </button>
             </div>
             <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>Save Product</button>
           </form>
@@ -535,8 +593,8 @@ export default function AdminDashboard() {
                 style={{ flex: 1 }}
               />
             </div>
-            <button type="button" className="btn btn-primary" onClick={showCroppedImage} style={{ width: '100%' }}>
-              Confirm Crop
+            <button type="button" className="btn btn-primary" onClick={showCroppedImage} disabled={isUploading} style={{ width: '100%', opacity: isUploading ? 0.7 : 1 }}>
+              {isUploading ? 'Uploading to Firebase...' : 'Confirm Crop'}
             </button>
           </div>
         </div>

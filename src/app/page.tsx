@@ -3,12 +3,14 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Star, ChefHat, Truck, Cookie } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import ProductImageSlider from '@/components/ProductImageSlider';
 
 export default function Home() {
-  const { products } = useCart();
+  const router = useRouter();
+  const { products, heroImage } = useCart();
   const featuredProducts = products.slice(0, 3);
   
   return (
@@ -33,7 +35,9 @@ export default function Home() {
           </div>
           <div className="hero-image-presentation" style={{ zIndex: 10 }}>
             <div className="hero-arch" style={{ background: 'var(--brown)' }}></div>
-            <img src="/images/preview.png" alt="Premium Artisan Cookie" className="hero-cookie-premium" style={{ transform: 'rotate(15deg)' }} />
+            <div className="hero-image-container">
+              <img src={heroImage} alt="Premium Artisan Cookie" className="hero-cookie-premium" style={{ transform: 'rotate(15deg)' }} />
+            </div>
             <div className="sticker pink" style={{ bottom: '10%', right: '10%', transform: 'rotate(-5deg)', width: '120px', fontSize: '1.2rem' }}>LOVE AT<br/>FIRST<br/>BITE</div>
           </div>
         </div>

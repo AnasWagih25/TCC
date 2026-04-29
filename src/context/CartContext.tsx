@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { collection, doc, getDocs, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export type ProductPrice = {
   normal: number;
@@ -20,7 +22,7 @@ export type Product = {
 export type CartItem = Omit<Product, 'price'> & { 
   quantity: number; 
   selectedSize: 'Normal' | 'Mini'; 
-  price: number; // The flat price for this size
+  price: number; 
 };
 
 export type Order = {
@@ -33,29 +35,32 @@ export type Order = {
     email: string;
     address: string;
     notes: string;
+    location?: { lat: number; lng: number };
   };
   items: CartItem[];
   total: number;
+  deliveryFee?: number;
   status: 'pending' | 'fulfilled';
 };
 
 const defaultProducts: Product[] = [
   { id: 'p1', name: 'Classic Belgian Milk Chocolate', description: 'Our signature cookie cake loaded with Belgian milk chocolate chunks.', price: { normal: 399, mini: 250 }, stock: 50, image: 'classic1.png', images: ['classic1.png', 'classic2.png'] },
   { id: 'p2', name: 'Double Chocolate', description: 'For the ultimate chocolate lover. Dark cocoa dough with semi-sweet chocolate.', price: { normal: 399, mini: 250 }, stock: 40, image: 'double.png', images: ['double.png'] },
-  { id: 'p3', name: 'Kinder Chocolate', description: 'Rich dough packed with Kinder chocolate bars and a creamy center.', price: { normal: 499, mini: 300 }, stock: 35, image: 'kinder 1.png', images: ['kinder 1.png'] },
-  { id: 'p4', name: "M&M's Chocolate", description: 'Fun, colorful, and delicious. Loaded with classic M&M candies.', price: { normal: 499, mini: 260 }, stock: 45, image: 'mm1.png', images: ['mm1.png', 'mm2.png'] }
+  { id: 'p3', name: 'Kinder Chocolate', description: 'Rich dough packed with Kinder chocolate bars and a creamy center.', price: { normal: 499, mini: 300 }, stock: 35, image: 'kinder 1.png', images: ['kinder 1.png'] }
 ];
 
 type CartContextType = {
   products: Product[];
   cart: CartItem[];
   orders: Order[];
+  heroImage: string;
   addToCart: (productId: string, size: 'Normal' | 'Mini') => { success: boolean; message: string };
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
   removeFromCart: (index: number) => void;
-  placeOrder: (customerInfo: any) => string;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (index: number) => void;
+  placeOrder: (customerInfo: any, deliveryFee?: number) => Order;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (index: number) => Promise<void>;
+  updateHeroImage: (url: string) => Promise<void>;
   markOrderFulfilled: (index: number) => void;
   addManualOrder: (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => string;
   deleteOrder: (orderId: string) => void;
@@ -67,56 +72,54 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [heroImage, setHeroImage] = useState<string>('/images/preview.png');
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
   useEffect(() => {
-    // Clear storage if previous schema version is detected to prevent app crash
-    const v = localStorage.getItem('tcc_version');
-    if (v !== '2.2') {
-      localStorage.removeItem('tcc_products');
-      localStorage.removeItem('tcc_cart');
-      localStorage.setItem('tcc_version', '2.2');
-    }
-    const savedProducts = localStorage.getItem('tcc_products');
-    let loadedProducts = savedProducts ? JSON.parse(savedProducts) : defaultProducts;
-    
-    // Quick migration to remove the broken kinder2.png image from the Kinder cookie
-    if (loadedProducts) {
-      loadedProducts = loadedProducts.map((p: Product) => {
-        if (p.id === 'p3' && p.images && p.images.length > 1) {
-          // If it's the default kinder cookie and it still has the second image, force it to 1 image
-          const hasBrokenImage = p.images.some(img => img.includes('kinder2'));
-          if (hasBrokenImage) {
-            return { ...p, images: [p.images[0]] };
-          }
-        }
-        return p;
-      });
-    }
-
-    setProducts(loadedProducts);
-    
+    // 1. Immediately load local data to unblock the app (Hydration)
     const savedCart = localStorage.getItem('tcc_cart');
     if (savedCart) setCart(JSON.parse(savedCart));
     
     const savedOrders = localStorage.getItem('tcc_orders');
     if (savedOrders) setOrders(JSON.parse(savedOrders));
-    
-    setIsLoaded(true);
-  }, []);
 
-  // Save to localStorage when state changes (only after initial load)
-  useEffect(() => {
-    if (isLoaded) {
+    const savedProducts = localStorage.getItem('tcc_products');
+    if (savedProducts) setProducts(JSON.parse(savedProducts));
+    else setProducts(defaultProducts);
+
+    // Unblock the UI immediately!
+    setIsLoaded(true);
+
+    // 2. Fetch live global data from Firestore in the background
+    const fetchGlobalData = async () => {
       try {
-        localStorage.setItem('tcc_products', JSON.stringify(products));
-      } catch (e) {
-        console.error('Failed to save products to localStorage', e);
-        alert('Failed to save to local storage! The image might still be too large.');
+        const productsSnap = await getDocs(collection(db, 'products'));
+        let liveProducts: Product[] = [];
+        
+        if (!productsSnap.empty) {
+          productsSnap.forEach(document => {
+            liveProducts.push(document.data() as Product);
+          });
+          setProducts(liveProducts);
+        } else {
+          // If Firestore is completely empty, upload default products
+          for (const p of defaultProducts) {
+            await setDoc(doc(db, 'products', p.id), p).catch(() => {});
+          }
+        }
+
+        // Fetch hero image from Firestore
+        const heroSnap = await getDoc(doc(db, 'settings', 'homepage'));
+        if (heroSnap.exists()) {
+          setHeroImage(heroSnap.data().heroImage);
+        }
+      } catch (err) {
+        console.error('Failed to connect to Firestore. Ensure Firestore Database is created in your Firebase Console.', err);
       }
-    }
-  }, [products, isLoaded]);
+    };
+
+    fetchGlobalData();
+  }, []);
 
   useEffect(() => {
     if (isLoaded) {
@@ -189,13 +192,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(newCart);
   };
 
-  const placeOrder = (customerInfo: any) => {
+  const placeOrder = (customerInfo: any, deliveryFee: number = 70) => {
     const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
     
     let subtotal = 0;
     cart.forEach(item => subtotal += item.price * item.quantity);
-    const delivery = 70;
-    const total = subtotal + delivery;
+    const total = subtotal + deliveryFee;
 
     const newOrder: Order = {
       id: orderId,
@@ -203,6 +205,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       customer: customerInfo,
       items: [...cart],
       total: total,
+      deliveryFee: deliveryFee,
       status: 'pending'
     };
 
@@ -212,6 +215,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const pIndex = updatedProducts.findIndex(p => p.id === cartItem.id);
       if (pIndex !== -1) {
         updatedProducts[pIndex].stock = Math.max(0, updatedProducts[pIndex].stock - cartItem.quantity);
+        // Sync new stock to Firestore
+        setDoc(doc(db, 'products', updatedProducts[pIndex].id), updatedProducts[pIndex]).catch(console.error);
       }
     });
 
@@ -219,10 +224,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setOrders([newOrder, ...orders]);
     setCart([]);
     
-    return orderId;
+    return newOrder;
   };
 
-  const updateProduct = (product: Product) => {
+  const updateProduct = async (product: Product) => {
+    await setDoc(doc(db, 'products', product.id), product);
     const index = products.findIndex(p => p.id === product.id);
     if (index >= 0) {
       const newProducts = [...products];
@@ -233,10 +239,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const deleteProduct = (index: number) => {
+  const deleteProduct = async (index: number) => {
+    const product = products[index];
+    await deleteDoc(doc(db, 'products', product.id));
     const newProducts = [...products];
     newProducts.splice(index, 1);
     setProducts(newProducts);
+  };
+
+  const updateHeroImage = async (url: string) => {
+    await setDoc(doc(db, 'settings', 'homepage'), { heroImage: url }, { merge: true });
+    setHeroImage(url);
   };
 
   const markOrderFulfilled = (index: number) => {
@@ -285,14 +298,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setOrders(orders.filter(order => order.id !== orderId));
   };
 
-  // Don't render children until we've loaded from localStorage to avoid hydration mismatch
   if (!isLoaded) return <div style={{ height: '100vh', background: '#FDE8EC' }}></div>;
 
   return (
     <CartContext.Provider value={{
-      products, cart, orders, 
+      products, cart, orders, heroImage,
       addToCart, updateQuantity, removeFromCart, placeOrder,
-      updateProduct, deleteProduct, markOrderFulfilled, addManualOrder, deleteOrder
+      updateProduct, deleteProduct, updateHeroImage, markOrderFulfilled, addManualOrder, deleteOrder
     }}>
       {children}
     </CartContext.Provider>

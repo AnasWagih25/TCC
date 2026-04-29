@@ -93,7 +93,7 @@ export default function Shop() {
                                 style={{ flex: 1, borderRadius: '50px', border: 'none', padding: '8px 0', fontSize: '1rem', background: size === 'Normal' ? 'var(--pink)' : 'transparent', fontWeight: size === 'Normal' ? 700 : 500, transition: '0.2s', color: 'var(--brown)' }}
                               >
                                 <div style={{ lineHeight: 1.1 }}>Normal</div>
-                                <div style={{ fontSize: '0.7rem', fontWeight: 400, marginTop: '2px', opacity: 0.8 }}>(8 Slices)</div>
+                                <div style={{ fontSize: '0.7rem', fontWeight: 400, marginTop: '2px', opacity: 0.8 }}>(7-8 Slices)</div>
                               </button>
                               <button 
                                 className={size === 'Mini' ? 'active' : ''} 
