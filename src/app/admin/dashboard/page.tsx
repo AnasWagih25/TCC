@@ -32,7 +32,7 @@ export default function AdminDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
-    name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: 'chocolate_chip.png'
+    name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: 'classic1.png'
   });
 
   // Cropper State
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
 
   const handleOpenAddModal = () => {
     setEditingProduct(null);
-    setFormData({ name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: 'chocolate_chip.png' });
+    setFormData({ name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: 'classic1.png' });
     setIsModalOpen(true);
   };
 

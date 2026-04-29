@@ -5,6 +5,11 @@ export async function POST(req: Request) {
   try {
     const orderData = await req.json();
     
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.warn('EMAIL_USER or EMAIL_PASS environment variables are missing. Order email was not sent.');
+      return NextResponse.json({ success: false, message: 'Email credentials missing, email not sent' }, { status: 200 });
+    }
+
     // You will need to add these credentials to a .env.local file in the root directory:
     // EMAIL_USER=your_app_email@gmail.com
     // EMAIL_PASS=your_app_password
