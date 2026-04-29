@@ -51,12 +51,12 @@ export default function CheckoutPage() {
 
     // Delivery zones
     const zones = [
-      { name: 'New Capital', lat: 29.9870, lng: 31.7400, radius: 20, fee: 100 },
-      { name: 'Sheikh Zayed', lat: 30.0450, lng: 29.9880, radius: 12, fee: 70 },
-      { name: '5th Settlement', lat: 30.0050, lng: 31.4250, radius: 15, fee: 70 },
-      { name: 'Old Cairo', lat: 30.0100, lng: 31.2300, radius: 10, fee: 65 },
-      { name: 'Dokki', lat: 30.0380, lng: 31.2100, radius: 10, fee: 65 },
-      { name: 'Greater Cairo / Middle Areas', lat: 30.0444, lng: 31.2357, radius: 25, fee: 80 }
+      { name: 'New Capital & Eastern Borders', lat: 29.9870, lng: 31.7400, radius: 45, fee: 100 },
+      { name: 'Sheikh Zayed, October & Western Giza', lat: 30.0450, lng: 29.9880, radius: 40, fee: 100 },
+      { name: '5th Settlement & New Cairo', lat: 30.0050, lng: 31.4250, radius: 30, fee: 75 },
+      { name: 'Old Cairo & Southern Giza', lat: 30.0100, lng: 31.2300, radius: 25, fee: 70 },
+      { name: 'Dokki & Central Giza', lat: 30.0380, lng: 31.2100, radius: 20, fee: 65 },
+      { name: 'Greater Cairo & Surrounding Borders', lat: 30.0444, lng: 31.2357, radius: 60, fee: 85 }
     ];
 
     let foundFee = -1; // -1 indicates out of bounds
