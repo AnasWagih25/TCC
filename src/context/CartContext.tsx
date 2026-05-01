@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, doc, getDocs, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export type ProductPrice = {
@@ -108,6 +108,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        // Fetch orders from Firestore
+        try {
+          const ordersSnap = await getDocs(collection(db, 'orders'));
+          if (!ordersSnap.empty) {
+            const liveOrders: Order[] = [];
+            ordersSnap.forEach(document => {
+              liveOrders.push(document.data() as Order);
+            });
+            // Sort by date descending (newest first)
+            liveOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setOrders(liveOrders);
+          }
+        } catch (ordersErr) {
+          console.error('Failed to fetch orders from Firestore:', ordersErr);
+        }
+
         // Fetch hero image from Firestore
         const heroSnap = await getDoc(doc(db, 'settings', 'homepage'));
         if (heroSnap.exists()) {
@@ -202,12 +218,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const newOrder: Order = {
       id: orderId,
       date: new Date().toISOString(),
+      source: 'web',
       customer: customerInfo,
       items: [...cart],
       total: total,
       deliveryFee: deliveryFee,
       status: 'pending'
     };
+
+    // Save order to Firestore
+    setDoc(doc(db, 'orders', orderId), newOrder).catch(console.error);
 
     // Update Stock
     const updatedProducts = [...products];
@@ -256,6 +276,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const newOrders = [...orders];
     newOrders[index].status = 'fulfilled';
     setOrders(newOrders);
+    // Sync to Firestore
+    setDoc(doc(db, 'orders', newOrders[index].id), newOrders[index]).catch(console.error);
   };
 
   const addManualOrder = (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => {
@@ -290,11 +312,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       status: 'fulfilled'
     };
 
+    // Save to Firestore
+    setDoc(doc(db, 'orders', orderId), manualOrder).catch(console.error);
+
     setOrders([manualOrder, ...orders]);
     return orderId;
   };
 
   const deleteOrder = (orderId: string) => {
+    // Remove from Firestore
+    deleteDoc(doc(db, 'orders', orderId)).catch(console.error);
     setOrders(orders.filter(order => order.id !== orderId));
   };
 
