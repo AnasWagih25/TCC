@@ -13,10 +13,10 @@ import getCroppedImg from '@/lib/cropImage';
 
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
-  const { products, orders, heroImage, updateHeroImage, updateProduct, deleteProduct, markOrderFulfilled, addManualOrder, deleteOrder } = useCart();
+  const { products, orders, heroImage, updateHeroImage, updateProduct, deleteProduct, markOrderFulfilled, addManualOrder, deleteOrder, promoSettings, updatePromoSettings } = useCart();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'settings'>('orders');
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState('');
   const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
@@ -27,6 +27,35 @@ export default function AdminDashboard() {
     quantity: '',
     notes: ''
   });
+
+  const [promoForm, setPromoForm] = useState({
+    code: '',
+    discountPercentage: '',
+    maxCap: '',
+    isActive: false
+  });
+
+  useEffect(() => {
+    if (promoSettings) {
+      setPromoForm({
+        code: promoSettings.code,
+        discountPercentage: promoSettings.discountPercentage.toString(),
+        maxCap: promoSettings.maxCap.toString(),
+        isActive: promoSettings.isActive
+      });
+    }
+  }, [promoSettings]);
+
+  const handleSavePromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updatePromoSettings({
+      code: promoForm.code.trim().toUpperCase(),
+      discountPercentage: parseFloat(promoForm.discountPercentage) || 0,
+      maxCap: parseFloat(promoForm.maxCap) || 0,
+      isActive: promoForm.isActive
+    });
+    alert('Promo code settings updated!');
+  };
   
   // Product Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -258,6 +287,12 @@ export default function AdminDashboard() {
             >
               Products
             </button>
+            <button 
+              className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`} 
+              onClick={() => setActiveTab('settings')}
+            >
+              Settings
+            </button>
           </div>
         </div>
 
@@ -355,6 +390,12 @@ export default function AdminDashboard() {
                             <span>Delivery Fee</span>
                             <span>EGP {o.deliveryFee?.toFixed(2) || '70.00'}</span>
                           </div>
+                          {o.discount && o.discount > 0 ? (
+                            <div className="order-product-row" style={{ marginTop: '5px', color: '#2ecc71', fontWeight: 600 }}>
+                              <span>Discount</span>
+                              <span>- EGP {o.discount.toFixed(2)}</span>
+                            </div>
+                          ) : null}
                           <div className="order-product-row" style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #eee', fontWeight: 'bold' }}>
                             <span>Total</span>
                             <span>EGP {o.total.toFixed(2)}</span>
@@ -382,7 +423,7 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'products' ? (
             <div className="admin-panel active">
               <div className="admin-toolbar" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
@@ -429,6 +470,63 @@ export default function AdminDashboard() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          ) : (
+            <div className="admin-panel active">
+              <div className="admin-toolbar">
+                <h3>Store Settings</h3>
+              </div>
+              <div className="admin-settings-section" style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
+                <h4 style={{ marginBottom: '16px', color: 'var(--brown)' }}>Promo Code Configuration</h4>
+                <form onSubmit={handleSavePromo}>
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontWeight: 600 }}>Enable Promo Code?</label>
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={promoForm.isActive} 
+                        onChange={e => setPromoForm({...promoForm, isActive: e.target.checked})} 
+                        style={{ width: '20px', height: '20px' }}
+                      /> <span>Active</span>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Promo Code Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. SUMMER20" 
+                        value={promoForm.code} 
+                        onChange={e => setPromoForm({...promoForm, code: e.target.value})} 
+                        disabled={!promoForm.isActive}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Discount Percentage (%)</label>
+                      <input 
+                        type="number" 
+                        min="0" max="100" 
+                        value={promoForm.discountPercentage} 
+                        onChange={e => setPromoForm({...promoForm, discountPercentage: e.target.value})} 
+                        disabled={!promoForm.isActive}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Max Cap (EGP)</label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        value={promoForm.maxCap} 
+                        onChange={e => setPromoForm({...promoForm, maxCap: e.target.value})} 
+                        disabled={!promoForm.isActive}
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ marginTop: '16px' }}>Save Promo Settings</button>
+                </form>
               </div>
             </div>
           )}

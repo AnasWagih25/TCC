@@ -25,6 +25,13 @@ export type CartItem = Omit<Product, 'price'> & {
   price: number; 
 };
 
+export type PromoCode = {
+  code: string;
+  discountPercentage: number;
+  maxCap: number;
+  isActive: boolean;
+};
+
 export type Order = {
   id: string;
   date: string;
@@ -40,6 +47,7 @@ export type Order = {
   items: CartItem[];
   total: number;
   deliveryFee?: number;
+  discount?: number;
   status: 'pending' | 'fulfilled';
 };
 
@@ -57,13 +65,15 @@ type CartContextType = {
   addToCart: (productId: string, size: 'Normal' | 'Mini') => { success: boolean; message: string };
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
   removeFromCart: (index: number) => void;
-  placeOrder: (customerInfo: any, deliveryFee?: number) => Order;
+  placeOrder: (customerInfo: any, deliveryFee?: number, discount?: number) => Promise<Order>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (index: number) => Promise<void>;
   updateHeroImage: (url: string) => Promise<void>;
   markOrderFulfilled: (index: number) => void;
   addManualOrder: (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => string;
   deleteOrder: (orderId: string) => void;
+  promoSettings: PromoCode | null;
+  updatePromoSettings: (promo: PromoCode) => Promise<void>;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -73,6 +83,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [heroImage, setHeroImage] = useState<string>('/images/preview.png');
+  const [promoSettings, setPromoSettings] = useState<PromoCode | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -128,6 +139,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const heroSnap = await getDoc(doc(db, 'settings', 'homepage'));
         if (heroSnap.exists()) {
           setHeroImage(heroSnap.data().heroImage);
+        }
+
+        // Fetch promo settings
+        const promoSnap = await getDoc(doc(db, 'settings', 'promo'));
+        if (promoSnap.exists()) {
+          setPromoSettings(promoSnap.data() as PromoCode);
         }
       } catch (err) {
         console.error('Failed to connect to Firestore. Ensure Firestore Database is created in your Firebase Console.', err);
@@ -208,12 +225,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(newCart);
   };
 
-  const placeOrder = (customerInfo: any, deliveryFee: number = 70) => {
+  const placeOrder = async (customerInfo: any, deliveryFee: number = 70, discount: number = 0) => {
     const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
     
     let subtotal = 0;
     cart.forEach(item => subtotal += item.price * item.quantity);
-    const total = subtotal + deliveryFee;
+    const total = subtotal + deliveryFee - discount;
 
     const newOrder: Order = {
       id: orderId,
@@ -223,24 +240,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       items: [...cart],
       total: total,
       deliveryFee: deliveryFee,
+      discount: discount,
       status: 'pending'
     };
 
     // Save order to Firestore
-    setDoc(doc(db, 'orders', orderId), newOrder).catch(console.error);
+    try {
+      await setDoc(doc(db, 'orders', orderId), newOrder);
 
-    // Update Stock
-    const updatedProducts = [...products];
-    cart.forEach(cartItem => {
-      const pIndex = updatedProducts.findIndex(p => p.id === cartItem.id);
-      if (pIndex !== -1) {
-        updatedProducts[pIndex].stock = Math.max(0, updatedProducts[pIndex].stock - cartItem.quantity);
-        // Sync new stock to Firestore
-        setDoc(doc(db, 'products', updatedProducts[pIndex].id), updatedProducts[pIndex]).catch(console.error);
+      // Update Stock
+      const updatedProducts = [...products];
+      for (const cartItem of cart) {
+        const pIndex = updatedProducts.findIndex(p => p.id === cartItem.id);
+        if (pIndex !== -1) {
+          updatedProducts[pIndex].stock = Math.max(0, updatedProducts[pIndex].stock - cartItem.quantity);
+          // Sync new stock to Firestore
+          await setDoc(doc(db, 'products', updatedProducts[pIndex].id), updatedProducts[pIndex]);
+        }
       }
-    });
+      setProducts(updatedProducts);
+    } catch(err) {
+      console.error('Failed to save order to firestore', err);
+    }
 
-    setProducts(updatedProducts);
     setOrders([newOrder, ...orders]);
     setCart([]);
     
@@ -270,6 +292,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateHeroImage = async (url: string) => {
     await setDoc(doc(db, 'settings', 'homepage'), { heroImage: url }, { merge: true });
     setHeroImage(url);
+  };
+
+  const updatePromoSettings = async (promo: PromoCode) => {
+    await setDoc(doc(db, 'settings', 'promo'), promo);
+    setPromoSettings(promo);
   };
 
   const markOrderFulfilled = (index: number) => {
@@ -329,9 +356,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider value={{
-      products, cart, orders, heroImage,
+      products, cart, orders, heroImage, promoSettings,
       addToCart, updateQuantity, removeFromCart, placeOrder,
-      updateProduct, deleteProduct, updateHeroImage, markOrderFulfilled, addManualOrder, deleteOrder
+      updateProduct, deleteProduct, updateHeroImage, markOrderFulfilled, addManualOrder, deleteOrder, updatePromoSettings
     }}>
       {children}
     </CartContext.Provider>

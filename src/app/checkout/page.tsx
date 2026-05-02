@@ -12,7 +12,7 @@ const CheckoutMap = dynamic(() => import('@/components/CheckoutMap'), {
 });
 
 export default function CheckoutPage() {
-  const { cart, placeOrder } = useCart();
+  const { cart, placeOrder, promoSettings } = useCart();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -25,6 +25,10 @@ export default function CheckoutPage() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
   const [isDeliverable, setIsDeliverable] = useState<boolean>(true);
+  
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
+  const [promoMessage, setPromoMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   let subtotal = 0;
   cart.forEach((item) => {
@@ -53,10 +57,10 @@ export default function CheckoutPage() {
     const zones = [
       { name: 'New Capital & Eastern Borders', lat: 29.9870, lng: 31.7400, radius: 45, fee: 100 },
       { name: 'Sheikh Zayed, October & Western Giza', lat: 30.0450, lng: 29.9880, radius: 40, fee: 100 },
-      { name: '5th Settlement & New Cairo', lat: 30.0050, lng: 31.4250, radius: 30, fee: 75 },
-      { name: 'Old Cairo & Southern Giza', lat: 30.0100, lng: 31.2300, radius: 25, fee: 70 },
-      { name: 'Dokki & Central Giza', lat: 30.0380, lng: 31.2100, radius: 20, fee: 65 },
-      { name: 'Greater Cairo & Surrounding Borders', lat: 30.0444, lng: 31.2357, radius: 60, fee: 85 }
+      { name: '5th Settlement & New Cairo', lat: 30.0050, lng: 31.4250, radius: 30, fee: 100 },
+      { name: 'Old Cairo & Southern Giza', lat: 30.0100, lng: 31.2300, radius: 25, fee: 75 },
+      { name: 'Dokki & Central Giza', lat: 30.0380, lng: 31.2100, radius: 20, fee: 75 },
+      { name: 'Greater Cairo & Surrounding Borders', lat: 30.0444, lng: 31.2357, radius: 60, fee: 100 }
     ];
 
     let foundFee = -1; // -1 indicates out of bounds
@@ -79,9 +83,25 @@ export default function CheckoutPage() {
     }
   }, [location]);
 
-  const total = subtotal + deliveryFee;
+  const handleApplyPromo = () => {
+    if (!promoSettings || !promoSettings.isActive) {
+      setPromoMessage({ text: 'No active promo code available.', type: 'error' });
+      setAppliedDiscount(0);
+      return;
+    }
+    if (promoCodeInput.trim().toUpperCase() === promoSettings.code.toUpperCase()) {
+      const discount = Math.min((subtotal * promoSettings.discountPercentage) / 100, promoSettings.maxCap);
+      setAppliedDiscount(discount);
+      setPromoMessage({ text: `Promo applied! You saved EGP ${discount.toFixed(2)}`, type: 'success' });
+    } else {
+      setAppliedDiscount(0);
+      setPromoMessage({ text: 'Invalid promo code.', type: 'error' });
+    }
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const total = subtotal + deliveryFee - appliedDiscount;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!location) {
       alert('Please pin your location on the map.');
@@ -93,7 +113,7 @@ export default function CheckoutPage() {
     }
     
     // Create the order locally
-    const newOrder = placeOrder({ ...formData, location }, deliveryFee);
+    const newOrder = await placeOrder({ ...formData, location }, deliveryFee, appliedDiscount);
     
     // Fire and forget email dispatch to the API
     fetch('/api/send-order-email', {
@@ -210,6 +230,37 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {/* Promo Code Section */}
+          <div style={{ 
+            background: 'rgba(255,255,255,0.5)', borderRadius: '16px', 
+            padding: '24px', marginBottom: '24px',
+            border: '1px solid rgba(250, 209, 217, 0.6)'
+          }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--brown-light)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Banknote size={18} /> Promo Code
+            </div>
+            <div className="form-group" style={{ marginBottom: 0, display: 'flex', gap: '12px' }}>
+              <input
+                type="text" placeholder="Enter promo code"
+                value={promoCodeInput} onChange={(e) => setPromoCodeInput(e.target.value)}
+                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--pink)', background: 'var(--off-white)' }}
+              />
+              <button 
+                type="button" 
+                onClick={handleApplyPromo}
+                className="btn btn-secondary" 
+                style={{ padding: '12px 24px', borderRadius: '8px', whiteSpace: 'nowrap' }}
+              >
+                Apply
+              </button>
+            </div>
+            {promoMessage && (
+              <p style={{ fontSize: '0.85rem', marginTop: '12px', fontWeight: 600, color: promoMessage.type === 'success' ? '#27ae60' : '#e74c3c' }}>
+                {promoMessage.text}
+              </p>
+            )}
+          </div>
+
           {/* Order Summary Footer */}
           <div style={{ 
             background: 'linear-gradient(135deg, var(--brown) 0%, #4a2d20 100%)', 
@@ -224,6 +275,12 @@ export default function CheckoutPage() {
               <span>Delivery</span>
               <span>{location ? (isDeliverable ? `EGP ${deliveryFee.toFixed(2)}` : <span style={{ color: '#ffaaaa' }}>Unavailable</span>) : <span style={{ fontSize: '0.8rem', fontStyle: 'italic', opacity: 0.8 }}>Pending Location Pin</span>}</span>
             </div>
+            {appliedDiscount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', fontSize: '0.95rem', color: '#2ecc71', fontWeight: 600 }}>
+                <span>Discount</span>
+                <span>- EGP {appliedDiscount.toFixed(2)}</span>
+              </div>
+            )}
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 700, fontSize: '1.2rem' }}>Total</span>
               <span style={{ fontWeight: 700, fontSize: '1.5rem', color: 'var(--pink)' }}>EGP {total.toFixed(2)}</span>

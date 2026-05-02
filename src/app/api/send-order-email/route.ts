@@ -73,8 +73,9 @@ export async function POST(req: Request) {
           </table>
 
           <div style="margin-top: 24px; padding: 20px; background-color: #FDE8EC; border-radius: 12px; text-align: right;">
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Subtotal:</strong> EGP ${(orderData.total - orderData.deliveryFee).toFixed(2)}</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Subtotal:</strong> EGP ${(orderData.total - orderData.deliveryFee + (orderData.discount || 0)).toFixed(2)}</p>
             <p style="margin: 4px 0; font-size: 14px;"><strong>Delivery Fee:</strong> EGP ${orderData.deliveryFee.toFixed(2)}</p>
+            ${orderData.discount ? `<p style="margin: 4px 0; font-size: 14px; color: #2ecc71;"><strong>Discount:</strong> - EGP ${orderData.discount.toFixed(2)}</p>` : ''}
             <p style="margin: 8px 0 0; font-size: 18px; color: #633D2D; font-weight: bold;"><strong>Total:</strong> EGP ${orderData.total.toFixed(2)}</p>
           </div>
           
