@@ -1,20 +1,79 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
-import { useCart, Product } from '@/context/CartContext';
-import { Cookie, TrendingUp, Package, Image as ImageIcon } from 'lucide-react';
+import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { storage, db } from '@/lib/firebase';
+import { useCart, Product, Order } from '@/context/CartContext';
+import { Cookie, TrendingUp, Package, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
-  const { products, orders, heroImage, updateHeroImage, updateProduct, deleteProduct, markOrderFulfilled, addManualOrder, deleteOrder, promoSettings, updatePromoSettings } = useCart();
+  const { products, heroImage, updateHeroImage, updateProduct, deleteProduct, addManualOrder: cartAddManualOrder, promoSettings, updatePromoSettings } = useCart();
   const router = useRouter();
+
+  // ── Direct Firestore orders (bypasses localStorage entirely) ──
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  const fetchOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      const ordersSnap = await getDocs(collection(db, 'orders'));
+      const liveOrders: Order[] = [];
+      ordersSnap.forEach(document => {
+        liveOrders.push(document.data() as Order);
+      });
+      // Sort by date descending (newest first)
+      liveOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setOrders(liveOrders);
+    } catch (err: any) {
+      console.error('Failed to fetch orders from Firestore:', err);
+      setOrdersError(err.message || 'Failed to load orders from database.');
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
+    }
+  }, [user, fetchOrders]);
+
+  const markOrderFulfilled = async (index: number) => {
+    const updated = [...orders];
+    updated[index] = { ...updated[index], status: 'fulfilled' };
+    setOrders(updated);
+    try {
+      await setDoc(doc(db, 'orders', updated[index].id), updated[index]);
+    } catch (err) {
+      console.error('Failed to update order in Firestore:', err);
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    setOrders(orders.filter(o => o.id !== orderId));
+    try {
+      await deleteDoc(doc(db, 'orders', orderId));
+    } catch (err) {
+      console.error('Failed to delete order from Firestore:', err);
+    }
+  };
+
+  const addManualOrder = (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => {
+    const orderId = cartAddManualOrder(data);
+    // Refresh orders list from Firestore after a short delay to pick up the new order
+    setTimeout(() => fetchOrders(), 1000);
+    return orderId;
+  };
 
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'settings'>('orders');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -320,11 +379,31 @@ export default function AdminDashboard() {
 
               <div className="admin-toolbar">
                 <h3>Recent Orders</h3>
-                <button className="btn btn-sm btn-primary" onClick={() => setIsManualOrderModalOpen(true)}>+ Add Manual Order</button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    className="btn btn-sm btn-secondary" 
+                    onClick={fetchOrders}
+                    disabled={ordersLoading}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <RefreshCw size={14} className={ordersLoading ? 'spin' : ''} style={ordersLoading ? { animation: 'spin 1s linear infinite' } : {}} /> 
+                    {ordersLoading ? 'Loading...' : 'Refresh'}
+                  </button>
+                  <button className="btn btn-sm btn-primary" onClick={() => setIsManualOrderModalOpen(true)}>+ Add Manual Order</button>
+                </div>
               </div>
 
+              {ordersError && (
+                <div style={{ background: '#ffeaea', border: '1px solid #e74c3c', borderRadius: '12px', padding: '16px', marginBottom: '16px', color: '#c0392b', fontSize: '0.9rem' }}>
+                  <strong>⚠ Error loading orders:</strong> {ordersError}
+                  <br/><span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Check your Firestore connection and security rules. Orders placed on the live site are saved to Firestore — this dashboard reads directly from it.</span>
+                </div>
+              )}
+
               <div className="admin-orders-list">
-                {orders.length === 0 ? (
+                {ordersLoading && orders.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--gray)' }}>Loading orders from database...</div>
+                ) : orders.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px', color: 'var(--gray)' }}>No orders received yet.</div>
                 ) : (
                   orders.map((o, index) => {
