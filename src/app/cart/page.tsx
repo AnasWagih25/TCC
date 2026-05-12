@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Trash2 } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+import { useCart, resolveImageUrl } from '@/context/CartContext';
 
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart } = useCart();
@@ -35,13 +35,27 @@ export default function Cart() {
               <div className="cart-layout">
                 <div className="cart-items">
                   {cart.map((item, index) => (
-                    <div key={item.id} className="cart-item">
-                      <img src={item.image.startsWith('data:') ? item.image : `/images/${item.image}`} alt={item.name} className="cart-item-img" />
+                    <div key={`${item.id}-${index}`} className="cart-item">
+                      <img src={resolveImageUrl(item.image)} alt={item.name} className="cart-item-img" />
                       <div className="cart-item-details">
                         <h4 className="cart-item-name">
-                          {item.name} <span style={{ fontSize: '0.85rem', color: 'var(--brown-light)', marginLeft: '6px' }}>({item.selectedSize})</span>
+                          {item.name}
+                          {item.boxSize ? (
+                            <span style={{ fontSize: '0.82rem', color: 'var(--brown-light)', marginLeft: '6px' }}>(Box of {item.boxSize})</span>
+                          ) : (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--brown-light)', marginLeft: '6px' }}>({item.selectedFlavor || item.selectedSize})</span>
+                          )}
                         </h4>
-                        <div className="cart-item-price">EGP {Number(item.price).toFixed(2)} each</div>
+                        {item.boxFlavors && item.boxFlavors.length > 0 && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--brown-light)', marginTop: '4px', lineHeight: 1.6 }}>
+                            {item.boxFlavors.map(bf => (
+                              <span key={bf.name} style={{ display: 'inline-block', background: 'var(--pink-light)', padding: '2px 8px', borderRadius: '50px', marginRight: '4px', marginBottom: '2px' }}>
+                                {bf.name} ×{bf.quantity}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="cart-item-price">EGP {Number(item.price).toFixed(2)}{item.boxSize ? '' : ' each'}</div>
                         <div className="quantity-controls">
                           <button className="qty-btn" onClick={() => updateQuantity(index, -1)}>-</button>
                           <span className="qty-value">{item.quantity}</span>

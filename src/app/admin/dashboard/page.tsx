@@ -7,8 +7,8 @@ import { updateProfile } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase';
-import { useCart, Product, Order } from '@/context/CartContext';
-import { Cookie, TrendingUp, Package, Image as ImageIcon, RefreshCw } from 'lucide-react';
+import { useCart, Product, Order, Flavor, resolveImageUrl } from '@/context/CartContext';
+import { Cookie, TrendingUp, Package, Image as ImageIcon, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 
@@ -122,6 +122,9 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({
     name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: 'classic1.png'
   });
+  const [productType, setProductType] = useState<'cake' | 'item'>('cake');
+  const [flavors, setFlavors] = useState<Flavor[]>([]);
+  const [boxSizesInput, setBoxSizesInput] = useState('6, 8, 12');
 
   // Cropper State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -130,7 +133,8 @@ export default function AdminDashboard() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isCropping, setIsCropping] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [cropTarget, setCropTarget] = useState<'product' | 'hero'>('product');
+  const [cropTarget, setCropTarget] = useState<'product' | 'hero' | 'flavor'>('product');
+  const [flavorCropIndex, setFlavorCropIndex] = useState(0);
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -162,8 +166,16 @@ export default function AdminDashboard() {
 
       if (cropTarget === 'hero') {
         await updateHeroImage(url);
+      } else if (cropTarget === 'flavor') {
+        setFlavors(prev => {
+          const updated = [...prev];
+          if (updated[flavorCropIndex]) {
+            updated[flavorCropIndex] = { ...updated[flavorCropIndex], image: url };
+          }
+          return updated;
+        });
       } else {
-        setFormData({ ...formData, image: url });
+        setFormData(prev => ({ ...prev, image: url }));
       }
 
       setIsUploading(false);
@@ -192,6 +204,9 @@ export default function AdminDashboard() {
   const handleOpenAddModal = () => {
     setEditingProduct(null);
     setFormData({ name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: 'classic1.png' });
+    setProductType('cake');
+    setFlavors([]);
+    setBoxSizesInput('6, 8, 12');
     setIsModalOpen(true);
   };
 
@@ -205,11 +220,24 @@ export default function AdminDashboard() {
       stock: p.stock.toString(), 
       image: p.image 
     });
+    setProductType(p.type || 'cake');
+    setFlavors(p.flavors || []);
+    setBoxSizesInput(p.boxSizes ? p.boxSizes.join(', ') : '6, 8, 12');
     setIsModalOpen(true);
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
+    const isItem = productType === 'item';
+    const productFlavors = isItem ? flavors.filter(f => f.name.trim()) : [];
+    const productImages = productFlavors.length > 0 
+      ? productFlavors.map(f => f.image).filter(Boolean)
+      : [formData.image];
+
+    const parsedBoxSizes = isItem 
+      ? boxSizesInput.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0).sort((a, b) => a - b)
+      : undefined;
+    
     const newProduct: Product = {
       id: editingProduct ? editingProduct.id : 'prod_' + Date.now(),
       name: formData.name,
@@ -219,8 +247,11 @@ export default function AdminDashboard() {
         mini: parseFloat(formData.priceMini) || 0
       },
       stock: parseInt(formData.stock, 10),
-      image: formData.image,
-      images: [formData.image]
+      image: productImages[0] || formData.image,
+      images: productImages,
+      type: productType,
+      flavors: productFlavors.length > 0 ? productFlavors : undefined,
+      boxSizes: parsedBoxSizes,
     };
     
     updateProduct(newProduct);
@@ -354,6 +385,9 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
+
+        {/* Global hidden file input for image uploads */}
+        <input type="file" id="hiddenFileInput" accept="image/*" style={{ display: 'none' }} onChange={onFileChange} />
 
         {/* Content */}
         <div className="admin-content">
@@ -518,7 +552,7 @@ export default function AdminDashboard() {
                   <button className="btn btn-sm btn-primary" onClick={handleOpenAddModal}>+ Add Product</button>
                 </div>
               </div>
-              <input type="file" id="hiddenFileInput" accept="image/*" style={{ display: 'none' }} onChange={onFileChange} />
+
               
               <div className="admin-products-grid">
                 {products.length === 0 ? (
@@ -526,10 +560,14 @@ export default function AdminDashboard() {
                 ) : (
                   products.map((p, index) => (
                     <div key={p.id} className="admin-product-card">
-                      <img src={p.image.startsWith('data:') ? p.image : `/images/${p.image}`} alt={p.name} className="admin-product-img" />
+                      <img src={resolveImageUrl(p.image)} alt={p.name} className="admin-product-img" />
                       <div className="admin-product-info">
-                        <h4>{p.name}</h4>
-                        <div className="price">Normal: EGP {p.price.normal.toFixed(2)} | Mini: EGP {p.price.mini.toFixed(2)}</div>
+                        <h4>{p.name} <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '50px', background: p.type === 'item' ? 'rgba(99,61,45,0.1)' : 'var(--pink)', color: 'var(--brown)', fontWeight: 500, marginLeft: '6px', fontFamily: '"Inter", sans-serif' }}>{p.type === 'item' ? 'Item' : 'Cake'}</span></h4>
+                        {p.type === 'item' && p.flavors && p.flavors.length > 0 ? (
+                          <div className="price">{p.flavors.length} flavor{p.flavors.length > 1 ? 's' : ''} · EGP {Math.min(...p.flavors.map(f => f.price)).toFixed(0)}–{Math.max(...p.flavors.map(f => f.price)).toFixed(0)}</div>
+                        ) : (
+                          <div className="price">Normal: EGP {p.price.normal.toFixed(2)} | Mini: EGP {p.price.mini.toFixed(2)}</div>
+                        )}
                         <div 
                           className="stock" 
                           style={{
@@ -619,52 +657,117 @@ export default function AdminDashboard() {
           <h2>{editingProduct ? 'Edit Concept' : 'Add New Concept'}</h2>
           
           <form onSubmit={handleSaveProduct}>
+            {/* Product Type Selector */}
             <div className="form-group">
-              <label>Cookie Name *</label>
+              <label>Product Type *</label>
+              <div style={{ display: 'flex', gap: '0', background: 'var(--off-white)', padding: '4px', borderRadius: '50px', marginTop: '6px' }}>
+                <button type="button" onClick={() => { setProductType('cake'); setFlavors([]); }}
+                  style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'cake' ? 700 : 500, background: productType === 'cake' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
+                  Cookie Cake
+                </button>
+                <button type="button" onClick={() => { setProductType('item'); if (flavors.length === 0) setFlavors([{ name: '', image: '', price: 0 }]); }}
+                  style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'item' ? 700 : 500, background: productType === 'item' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
+                  Cookie Item
+                </button>
+              </div>
+              <p style={{ fontSize: '0.72rem', color: 'var(--brown-light)', marginTop: '6px' }}>
+                {productType === 'cake' ? 'Cookie Cake with Normal & Mini sizes.' : 'Cookie Item with different flavors & per-flavor pricing.'}
+              </p>
+            </div>
+            <div className="form-group">
+              <label>Name *</label>
               <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
             <div className="form-group">
               <label>Description *</label>
               <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Normal Price (EGP) *</label>
-                <input type="number" required min="0.01" step="0.01" value={formData.priceNormal} onChange={e => setFormData({...formData, priceNormal: e.target.value})} />
-              </div>
-              <div className="form-group">
-                <label>Mini Price (EGP) *</label>
-                <input type="number" required min="0.01" step="0.01" value={formData.priceMini} onChange={e => setFormData({...formData, priceMini: e.target.value})} />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Stock Quantity *</label>
-                <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Product Image</label>
-              <p style={{ fontSize: '0.75rem', color: 'var(--brown-light)', margin: '2px 0 8px' }}>
-                Upload an image. You can crop it to be a perfect square.
-              </p>
-              {formData.image && (
-                <div style={{ marginBottom: '10px' }}>
-                  <img src={formData.image.startsWith('data:') ? formData.image : `/images/${formData.image}`} alt="Preview" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--brown-light)' }} />
+            {productType === 'cake' ? (
+              <>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Normal Price (EGP) *</label>
+                    <input type="number" required min="0.01" step="0.01" value={formData.priceNormal} onChange={e => setFormData({...formData, priceNormal: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Mini Price (EGP) *</label>
+                    <input type="number" required min="0.01" step="0.01" value={formData.priceMini} onChange={e => setFormData({...formData, priceMini: e.target.value})} />
+                  </div>
                 </div>
-              )}
-              <button 
-                type="button" 
-                className="btn btn-sm btn-secondary" 
-                onClick={() => {
-                  setCropTarget('product');
-                  document.getElementById('hiddenFileInput')?.click();
-                }}
-              >
-                Upload & Crop Image
-              </button>
-            </div>
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>Save Product</button>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Stock Quantity *</label>
+                    <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Product Image</label>
+                  {formData.image && (
+                    <div style={{ marginBottom: '10px' }}>
+                      <img src={resolveImageUrl(formData.image)} alt="Preview" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--brown-light)' }} />
+                    </div>
+                  )}
+                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => { setCropTarget('product'); document.getElementById('hiddenFileInput')?.click(); }}>
+                    Upload & Crop Image
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Stock Quantity *</label>
+                    <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Box Sizes</label>
+                    <input type="text" value={boxSizesInput} onChange={e => setBoxSizesInput(e.target.value)}
+                      placeholder="e.g. 6, 8, 12"
+                      style={{ fontSize: '0.85rem' }} />
+                    <p style={{ fontSize: '0.68rem', color: 'var(--brown-light)', marginTop: '4px' }}>Comma-separated. Customers pick a box size and fill it with flavors.</p>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Flavors, Prices & Images</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                    {flavors.map((flavor, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'var(--off-white)', padding: '12px', borderRadius: '12px', border: '1px solid var(--pink)' }}>
+                        <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', background: 'var(--pink-light)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px dashed var(--brown-light)' }}
+                          onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
+                          {flavor.image ? (
+                            <img src={resolveImageUrl(flavor.image)} alt={flavor.name || 'Flavor'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <ImageIcon size={18} color="var(--brown-light)" />
+                          )}
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <input type="text" placeholder={`Flavor ${idx + 1} name`} value={flavor.name}
+                            onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], name: e.target.value }; setFlavors(u); }}
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem' }} />
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--brown-light)', whiteSpace: 'nowrap' }}>EGP</span>
+                            <input type="number" placeholder="Price" min="0" step="0.01" value={flavor.price || ''}
+                              onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setFlavors(u); }}
+                              style={{ width: '90px', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem' }} />
+                            <button type="button" style={{ fontSize: '0.7rem', color: 'var(--brown-light)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
+                              {flavor.image ? 'Change img' : 'Upload img'}
+                            </button>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setFlavors(flavors.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px', flexShrink: 0 }}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setFlavors([...flavors, { name: '', image: '', price: 0 }])}
+                      className="btn btn-sm btn-secondary" style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Plus size={14} /> Add Flavor
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </form>
         </div>
       </div>

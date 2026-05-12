@@ -9,6 +9,12 @@ export type ProductPrice = {
   mini: number;
 };
 
+export type Flavor = {
+  name: string;
+  image: string;
+  price: number;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -17,11 +23,28 @@ export type Product = {
   stock: number;
   image: string;
   images?: string[];
+  type?: 'cake' | 'item';
+  flavors?: Flavor[];
+  boxSizes?: number[];
 };
+
+/** Resolve an image string to a displayable URL */
+export function resolveImageUrl(img: string): string {
+  if (!img) return '/images/preview.png';
+  if (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('data:') || img.startsWith('blob:')) {
+    return img;
+  }
+  return `/images/${img}`;
+}
+
+export type BoxFlavorSelection = { name: string; quantity: number };
 
 export type CartItem = Omit<Product, 'price'> & { 
   quantity: number; 
   selectedSize: 'Normal' | 'Mini'; 
+  selectedFlavor?: string;
+  boxSize?: number;
+  boxFlavors?: BoxFlavorSelection[];
   price: number; 
 };
 
@@ -62,7 +85,8 @@ type CartContextType = {
   cart: CartItem[];
   orders: Order[];
   heroImage: string;
-  addToCart: (productId: string, size: 'Normal' | 'Mini') => { success: boolean; message: string };
+  addToCart: (productId: string, size: 'Normal' | 'Mini', flavorName?: string) => { success: boolean; message: string };
+  addBoxToCart: (productId: string, boxSize: number, selections: BoxFlavorSelection[]) => { success: boolean; message: string };
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
   removeFromCart: (index: number) => void;
   placeOrder: (customerInfo: any, deliveryFee?: number, discount?: number) => Promise<Order>;
@@ -167,6 +191,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoaded) {
       try {
+        localStorage.setItem('tcc_products', JSON.stringify(products));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [products, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      try {
         localStorage.setItem('tcc_orders', JSON.stringify(orders));
       } catch (e) {
         console.error(e);
@@ -174,11 +208,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [orders, isLoaded]);
 
-  const addToCart = (productId: string, size: 'Normal' | 'Mini') => {
+  const addToCart = (productId: string, size: 'Normal' | 'Mini', flavorName?: string) => {
     const product = products.find(p => p.id === productId);
     if (!product || product.stock <= 0) return { success: false, message: 'Out of stock' };
 
-    const existingIndex = cart.findIndex(item => item.id === productId && item.selectedSize === size);
+    const isCookieItem = product.type === 'item';
+    let selectedPrice: number;
+    let cartFlavor: string | undefined;
+
+    if (isCookieItem && flavorName && product.flavors) {
+      const flavor = product.flavors.find(f => f.name === flavorName);
+      if (!flavor) return { success: false, message: 'Flavor not found' };
+      selectedPrice = flavor.price;
+      cartFlavor = flavorName;
+    } else {
+      selectedPrice = size === 'Normal' ? product.price.normal : product.price.mini;
+    }
+
+    const existingIndex = cart.findIndex(item => 
+      item.id === productId && item.selectedSize === size && item.selectedFlavor === cartFlavor
+    );
     
     if (existingIndex >= 0) {
       if (cart[existingIndex].quantity >= product.stock) {
@@ -188,12 +237,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       newCart[existingIndex].quantity += 1;
       setCart(newCart);
     } else {
-      const selectedPrice = size === 'Normal' ? product.price.normal : product.price.mini;
       const { price, ...productWithoutPrice } = product;
-      setCart([...cart, { ...productWithoutPrice, selectedSize: size, price: selectedPrice, quantity: 1 }]);
+      setCart([...cart, { ...productWithoutPrice, selectedSize: size, selectedFlavor: cartFlavor, price: selectedPrice, quantity: 1 }]);
     }
     
-    return { success: true, message: `Added ${product.name} to cart` };
+    return { success: true, message: `Added ${product.name}${cartFlavor ? ` (${cartFlavor})` : ''} to cart` };
+  };
+
+  const addBoxToCart = (productId: string, boxSize: number, selections: BoxFlavorSelection[]) => {
+    const product = products.find(p => p.id === productId);
+    if (!product || product.stock <= 0) return { success: false, message: 'Out of stock' };
+    if (!product.flavors) return { success: false, message: 'No flavors available' };
+
+    const totalCookies = selections.reduce((sum, s) => sum + s.quantity, 0);
+    if (totalCookies !== boxSize) return { success: false, message: `Please select exactly ${boxSize} cookies` };
+
+    // Calculate total price: sum of (flavor price × quantity)
+    let totalPrice = 0;
+    for (const sel of selections) {
+      const flavor = product.flavors.find(f => f.name === sel.name);
+      if (!flavor) return { success: false, message: `Flavor "${sel.name}" not found` };
+      totalPrice += flavor.price * sel.quantity;
+    }
+
+    const { price, ...productWithoutPrice } = product;
+    const boxItem: CartItem = {
+      ...productWithoutPrice,
+      selectedSize: 'Normal',
+      boxSize,
+      boxFlavors: selections.filter(s => s.quantity > 0),
+      price: totalPrice,
+      quantity: 1,
+    };
+    setCart(prev => [...prev, boxItem]);
+    return { success: true, message: `Added ${product.name} (Box of ${boxSize}) to cart` };
   };
 
   const updateQuantity = (index: number, change: number) => {
@@ -271,22 +348,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const updateProduct = async (product: Product) => {
     await setDoc(doc(db, 'products', product.id), product);
-    const index = products.findIndex(p => p.id === product.id);
-    if (index >= 0) {
-      const newProducts = [...products];
-      newProducts[index] = product;
-      setProducts(newProducts);
-    } else {
-      setProducts([...products, product]);
-    }
+    setProducts(prev => {
+      const index = prev.findIndex(p => p.id === product.id);
+      if (index >= 0) {
+        const newProducts = [...prev];
+        newProducts[index] = product;
+        return newProducts;
+      } else {
+        return [...prev, product];
+      }
+    });
   };
 
   const deleteProduct = async (index: number) => {
     const product = products[index];
+    if (!product) return;
     await deleteDoc(doc(db, 'products', product.id));
-    const newProducts = [...products];
-    newProducts.splice(index, 1);
-    setProducts(newProducts);
+    setProducts(prev => prev.filter(p => p.id !== product.id));
   };
 
   const updateHeroImage = async (url: string) => {
@@ -357,7 +435,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider value={{
       products, cart, orders, heroImage, promoSettings,
-      addToCart, updateQuantity, removeFromCart, placeOrder,
+      addToCart, addBoxToCart, updateQuantity, removeFromCart, placeOrder,
       updateProduct, deleteProduct, updateHeroImage, markOrderFulfilled, addManualOrder, deleteOrder, updatePromoSettings
     }}>
       {children}

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { resolveImageUrl } from '@/context/CartContext';
 
 type ProductImageSliderProps = {
   images: string[];
@@ -47,7 +48,7 @@ export default function ProductImageSlider({ images, alt }: ProductImageSliderPr
             zIndex: index === currentIndex ? 1 : 0
           }}
         >
-          <img src={image.startsWith('data:') ? image : `/images/${image}`} alt={`${alt} - view ${index + 1}`} loading="lazy" />
+          <img src={resolveImageUrl(image)} alt={`${alt} - view ${index + 1}`} loading="lazy" />
         </div>
       ))}
       
