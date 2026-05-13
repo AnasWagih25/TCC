@@ -14,6 +14,12 @@ const fredoka = Fredoka({ subsets: ["latin"], variable: '--font-fredoka' });
 export const metadata: Metadata = {
   title: "The Cookie Concept",
   description: "Artisan cookies baked with love. Order online for delivery.",
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    viewportFit: 'cover',
+  },
 };
 
 export default function RootLayout({

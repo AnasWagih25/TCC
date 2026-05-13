@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { updateProfile } from 'firebase/auth';
@@ -120,11 +120,14 @@ export default function AdminDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
-    name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: 'classic1.png'
+    name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: ''
   });
   const [productType, setProductType] = useState<'cake' | 'item'>('cake');
   const [flavors, setFlavors] = useState<Flavor[]>([]);
-  const [boxSizesInput, setBoxSizesInput] = useState('6, 8, 12');
+  const [boxPricing, setBoxPricing] = useState<{size: number, price: number}[]>([
+    { size: 6, price: 250 },
+    { size: 12, price: 450 }
+  ]);
 
   // Cropper State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -135,6 +138,15 @@ export default function AdminDashboard() {
   const [isUploading, setIsUploading] = useState(false);
   const [cropTarget, setCropTarget] = useState<'product' | 'hero' | 'flavor'>('product');
   const [flavorCropIndex, setFlavorCropIndex] = useState(0);
+  // When opening the cropper from within the edit modal, we hide the edit modal
+  // and restore it after cropping is done
+  const [modalHiddenForCrop, setModalHiddenForCrop] = useState(false);
+  const modalHiddenForCropRef = useRef(false);
+  const isModalOpenRef = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => { isModalOpenRef.current = isModalOpen; }, [isModalOpen]);
+  useEffect(() => { modalHiddenForCropRef.current = modalHiddenForCrop; }, [modalHiddenForCrop]);
 
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -142,6 +154,12 @@ export default function AdminDashboard() {
       const reader = new FileReader();
       reader.addEventListener('load', () => {
         setImageSrc(reader.result?.toString() || null);
+        // If the edit modal is open, hide it temporarily so the cropper is accessible
+        if (isModalOpenRef.current) {
+          setModalHiddenForCrop(true);
+          modalHiddenForCropRef.current = true;
+          setIsModalOpen(false);
+        }
         setIsCropping(true);
       });
       reader.readAsDataURL(file);
@@ -181,10 +199,33 @@ export default function AdminDashboard() {
       setIsUploading(false);
       setIsCropping(false);
       setImageSrc(null);
+      // Re-open the edit modal if it was hidden for cropping
+      if (modalHiddenForCropRef.current) {
+        setModalHiddenForCrop(false);
+        modalHiddenForCropRef.current = false;
+        setIsModalOpen(true);
+      }
     } catch (e) {
       setIsUploading(false);
       console.error(e);
       alert('Failed to crop and upload image');
+      // Re-open modal even on error
+      if (modalHiddenForCropRef.current) {
+        setModalHiddenForCrop(false);
+        modalHiddenForCropRef.current = false;
+        setIsModalOpen(true);
+      }
+    }
+  };
+
+  const cancelCrop = () => {
+    setIsCropping(false);
+    setImageSrc(null);
+    // Re-open the edit modal if it was hidden for cropping
+    if (modalHiddenForCropRef.current) {
+      setModalHiddenForCrop(false);
+      modalHiddenForCropRef.current = false;
+      setIsModalOpen(true);
     }
   };
 
@@ -203,10 +244,10 @@ export default function AdminDashboard() {
 
   const handleOpenAddModal = () => {
     setEditingProduct(null);
-    setFormData({ name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: 'classic1.png' });
+    setFormData({ name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: '' });
     setProductType('cake');
     setFlavors([]);
-    setBoxSizesInput('6, 8, 12');
+    setBoxPricing([{ size: 6, price: 250 }, { size: 12, price: 450 }]);
     setIsModalOpen(true);
   };
 
@@ -222,21 +263,32 @@ export default function AdminDashboard() {
     });
     setProductType(p.type || 'cake');
     setFlavors(p.flavors || []);
-    setBoxSizesInput(p.boxSizes ? p.boxSizes.join(', ') : '6, 8, 12');
+    if (p.boxPricing) {
+      setBoxPricing(p.boxPricing);
+    } else if (p.boxSizes) {
+      setBoxPricing(p.boxSizes.map(s => ({ size: s, price: 0 })));
+    } else {
+      setBoxPricing([{ size: 6, price: 250 }, { size: 12, price: 450 }]);
+    }
     setIsModalOpen(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const isItem = productType === 'item';
     const productFlavors = isItem ? flavors.filter(f => f.name.trim()) : [];
-    const productImages = productFlavors.length > 0 
-      ? productFlavors.map(f => f.image).filter(Boolean)
-      : [formData.image];
+    
+    // Main image is always formData.image; flavor images are secondary
+    const mainImage = formData.image || '';
+    const flavorImages = productFlavors.map(f => f.image).filter(Boolean);
+    const productImages = mainImage 
+      ? [mainImage, ...flavorImages.filter(fi => fi !== mainImage)]
+      : flavorImages;
 
-    const parsedBoxSizes = isItem 
-      ? boxSizesInput.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0).sort((a, b) => a - b)
-      : undefined;
+    const parsedBoxPricing = isItem ? boxPricing.filter(bp => bp.size > 0 && bp.price > 0).sort((a, b) => a.size - b.size) : [];
+    
+    // Also save boxSizes for backward compatibility if needed by old code
+    const parsedBoxSizes = parsedBoxPricing.map(bp => bp.size);
     
     const newProduct: Product = {
       id: editingProduct ? editingProduct.id : 'prod_' + Date.now(),
@@ -247,15 +299,21 @@ export default function AdminDashboard() {
         mini: parseFloat(formData.priceMini) || 0
       },
       stock: parseInt(formData.stock, 10),
-      image: productImages[0] || formData.image,
-      images: productImages,
+      image: mainImage || productImages[0] || '',
+      images: productImages.length > 0 ? productImages : [],
       type: productType,
-      flavors: productFlavors.length > 0 ? productFlavors : undefined,
+      flavors: productFlavors.length > 0 ? productFlavors : [],
       boxSizes: parsedBoxSizes,
+      boxPricing: parsedBoxPricing,
     };
     
-    updateProduct(newProduct);
-    setIsModalOpen(false);
+    try {
+      await updateProduct(newProduct);
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to save product:', err);
+      alert('Failed to save product. Please try again.');
+    }
   };
 
   const handleCreateManualOrder = (e: React.FormEvent) => {
@@ -653,55 +711,44 @@ export default function AdminDashboard() {
       {/* Product Modal */}
       <div className={`modal-overlay ${isModalOpen ? 'active' : ''}`}>
         <div className="modal">
-          <button className="modal-close" onClick={() => setIsModalOpen(false)}>&times;</button>
-          <h2>{editingProduct ? 'Edit Concept' : 'Add New Concept'}</h2>
+          <div className="modal-header">
+            <button className="modal-close" onClick={() => setIsModalOpen(false)}>&times;</button>
+            <h2>{editingProduct ? 'Edit Concept' : 'Add New Concept'}</h2>
+            <p className="modal-subtitle">Update details, pricing, and images for this product.</p>
+          </div>
           
-          <form onSubmit={handleSaveProduct}>
-            {/* Product Type Selector */}
-            <div className="form-group">
-              <label>Product Type *</label>
-              <div style={{ display: 'flex', gap: '0', background: 'var(--off-white)', padding: '4px', borderRadius: '50px', marginTop: '6px' }}>
-                <button type="button" onClick={() => { setProductType('cake'); setFlavors([]); }}
-                  style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'cake' ? 700 : 500, background: productType === 'cake' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
-                  Cookie Cake
-                </button>
-                <button type="button" onClick={() => { setProductType('item'); if (flavors.length === 0) setFlavors([{ name: '', image: '', price: 0 }]); }}
-                  style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'item' ? 700 : 500, background: productType === 'item' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
-                  Cookie Item
-                </button>
-              </div>
-              <p style={{ fontSize: '0.72rem', color: 'var(--brown-light)', marginTop: '6px' }}>
-                {productType === 'cake' ? 'Cookie Cake with Normal & Mini sizes.' : 'Cookie Item with different flavors & per-flavor pricing.'}
-              </p>
-            </div>
-            <div className="form-group">
-              <label>Name *</label>
-              <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-            </div>
-            <div className="form-group">
-              <label>Description *</label>
-              <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
-            </div>
-            {productType === 'cake' ? (
-              <>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Normal Price (EGP) *</label>
-                    <input type="number" required min="0.01" step="0.01" value={formData.priceNormal} onChange={e => setFormData({...formData, priceNormal: e.target.value})} />
+          <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+            <div className="modal-body">
+              <div className="form-section">
+                <div className="form-section-title">Product Details</div>
+                {/* Product Type Selector */}
+                <div className="form-group">
+                  <label>Product Type *</label>
+                  <div style={{ display: 'flex', gap: '0', background: 'var(--off-white)', padding: '4px', borderRadius: '50px', marginTop: '6px' }}>
+                    <button type="button" onClick={() => { setProductType('cake'); setFlavors([]); }}
+                      style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'cake' ? 700 : 500, background: productType === 'cake' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
+                      Cookie Cake
+                    </button>
+                    <button type="button" onClick={() => { setProductType('item'); if (flavors.length === 0) setFlavors([{ name: '', image: '', price: 0 }]); }}
+                      style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'item' ? 700 : 500, background: productType === 'item' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
+                      Cookie Boxes
+                    </button>
                   </div>
-                  <div className="form-group">
-                    <label>Mini Price (EGP) *</label>
-                    <input type="number" required min="0.01" step="0.01" value={formData.priceMini} onChange={e => setFormData({...formData, priceMini: e.target.value})} />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Stock Quantity *</label>
-                    <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
-                  </div>
+                  <p className="form-hint">
+                    {productType === 'cake' ? 'Cookie Cake with Normal & Mini sizes.' : 'Cookie Item with different flavors & per-flavor pricing.'}
+                  </p>
                 </div>
                 <div className="form-group">
-                  <label>Product Image</label>
+                  <label>Name *</label>
+                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Classic Chocolate Chip" />
+                </div>
+                <div className="form-group">
+                  <label>Description *</label>
+                  <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Brief description of the product" />
+                </div>
+                <div className="form-group" style={{ marginTop: '16px' }}>
+                  <label>Main Product Image</label>
+                  <p className="form-hint" style={{ marginBottom: '8px' }}>This image represents the product in the shop.</p>
                   {formData.image && (
                     <div style={{ marginBottom: '10px' }}>
                       <img src={resolveImageUrl(formData.image)} alt="Preview" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--brown-light)' }} />
@@ -711,63 +758,115 @@ export default function AdminDashboard() {
                     Upload & Crop Image
                   </button>
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Stock Quantity *</label>
-                    <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+              </div>
+
+              {productType === 'cake' ? (
+                <div className="form-section">
+                  <div className="form-section-title">Pricing & Inventory</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Normal Price (EGP) *</label>
+                      <input type="number" required min="0.01" step="0.01" value={formData.priceNormal} onChange={e => setFormData({...formData, priceNormal: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label>Mini Price (EGP) *</label>
+                      <input type="number" required min="0.01" step="0.01" value={formData.priceMini} onChange={e => setFormData({...formData, priceMini: e.target.value})} />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Box Sizes</label>
-                    <input type="text" value={boxSizesInput} onChange={e => setBoxSizesInput(e.target.value)}
-                      placeholder="e.g. 6, 8, 12"
-                      style={{ fontSize: '0.85rem' }} />
-                    <p style={{ fontSize: '0.68rem', color: 'var(--brown-light)', marginTop: '4px' }}>Comma-separated. Customers pick a box size and fill it with flavors.</p>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Stock Quantity *</label>
+                      <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                    </div>
                   </div>
                 </div>
-                <div className="form-group">
-                  <label>Flavors, Prices & Images</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
-                    {flavors.map((flavor, idx) => (
-                      <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'var(--off-white)', padding: '12px', borderRadius: '12px', border: '1px solid var(--pink)' }}>
-                        <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', background: 'var(--pink-light)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px dashed var(--brown-light)' }}
-                          onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
-                          {flavor.image ? (
-                            <img src={resolveImageUrl(flavor.image)} alt={flavor.name || 'Flavor'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <ImageIcon size={18} color="var(--brown-light)" />
-                          )}
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          <input type="text" placeholder={`Flavor ${idx + 1} name`} value={flavor.name}
-                            onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], name: e.target.value }; setFlavors(u); }}
-                            style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem' }} />
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--brown-light)', whiteSpace: 'nowrap' }}>EGP</span>
-                            <input type="number" placeholder="Price" min="0" step="0.01" value={flavor.price || ''}
-                              onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setFlavors(u); }}
-                              style={{ width: '90px', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem' }} />
-                            <button type="button" style={{ fontSize: '0.7rem', color: 'var(--brown-light)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                              onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
-                              {flavor.image ? 'Change img' : 'Upload img'}
+              ) : (
+                <>
+                  <div className="form-section">
+                    <div className="form-section-title">Box Sizes & Pricing</div>
+                    <div className="form-group">
+                      <label>Box Options</label>
+                      <p className="form-hint" style={{ marginBottom: '12px' }}>Define the sizes available and their base price.</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {boxPricing.map((bp, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <input type="number" placeholder="Size (e.g. 6)" value={bp.size || ''}
+                              onChange={e => { const u = [...boxPricing]; u[idx] = { ...u[idx], size: parseInt(e.target.value) || 0 }; setBoxPricing(u); }}
+                              style={{ flex: 1 }} />
+                            <input type="number" placeholder="Price (EGP)" value={bp.price || ''}
+                              onChange={e => { const u = [...boxPricing]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setBoxPricing(u); }}
+                              style={{ flex: 1 }} />
+                            <button type="button" onClick={() => setBoxPricing(boxPricing.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px' }}>
+                              <Trash2 size={16} />
                             </button>
                           </div>
-                        </div>
-                        <button type="button" onClick={() => setFlavors(flavors.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px', flexShrink: 0 }}>
-                          <Trash2 size={16} />
+                        ))}
+                        <button type="button" onClick={() => setBoxPricing([...boxPricing, { size: 0, price: 0 }])}
+                          className="btn btn-sm btn-secondary" style={{ alignSelf: 'flex-start', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Plus size={14} /> Add Box Option
                         </button>
                       </div>
-                    ))}
-                    <button type="button" onClick={() => setFlavors([...flavors, { name: '', image: '', price: 0 }])}
-                      className="btn btn-sm btn-secondary" style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Plus size={14} /> Add Flavor
-                    </button>
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+
+                  <div className="form-section">
+                    <div className="form-section-title">Flavors Inventory</div>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Global Stock Quantity *</label>
+                        <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                        <p className="form-hint">Total number of boxes available.</p>
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ marginTop: '16px' }}>
+                      <label>Available Flavors</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
+                        {flavors.map((flavor, idx) => (
+                          <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'var(--off-white)', padding: '12px', borderRadius: '12px', border: '1px solid var(--pink)' }}>
+                            <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', background: 'var(--pink-light)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px dashed var(--brown-light)' }}
+                              onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
+                              {flavor.image ? (
+                                <img src={resolveImageUrl(flavor.image)} alt={flavor.name || 'Flavor'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                <ImageIcon size={18} color="var(--brown-light)" />
+                              )}
+                            </div>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <input type="text" placeholder={`Flavor ${idx + 1} name`} value={flavor.name}
+                                onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], name: e.target.value }; setFlavors(u); }}
+                                style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem' }} />
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--brown-light)', whiteSpace: 'nowrap' }}>+ EGP</span>
+                                <input type="number" placeholder="Surcharge" min="0" step="0.01" value={flavor.price || ''}
+                                  onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setFlavors(u); }}
+                                  style={{ width: '90px', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem' }} />
+                                <button type="button" style={{ fontSize: '0.7rem', color: 'var(--brown-light)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                  onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
+                                  {flavor.image ? 'Change img' : 'Upload img'}
+                                </button>
+                              </div>
+                            </div>
+                            <button type="button" onClick={() => setFlavors(flavors.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px', flexShrink: 0 }}>
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => setFlavors([...flavors, { name: '', image: '', price: 0 }])}
+                          className="btn btn-sm btn-secondary" style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Plus size={14} /> Add Flavor
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <div className="modal-footer">
+              <button type="submit" className="btn btn-primary">
+                {editingProduct ? 'Save Changes' : 'Add Product'}
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -775,107 +874,128 @@ export default function AdminDashboard() {
       {/* Manual Order Modal */}
       <div className={`modal-overlay ${isManualOrderModalOpen ? 'active' : ''}`}>
         <div className="modal">
-          <button className="modal-close" onClick={() => setIsManualOrderModalOpen(false)}>&times;</button>
-          <h2>Add Manual Order</h2>
+          <div className="modal-header">
+            <button className="modal-close" onClick={() => setIsManualOrderModalOpen(false)}>&times;</button>
+            <h2>Add Manual Order</h2>
+            <p className="modal-subtitle">Log a walk-in or offline order to sync inventory.</p>
+          </div>
 
-          <form onSubmit={handleCreateManualOrder}>
-            <div className="form-group">
-              <label>Customer Name</label>
-              <input
-                type="text"
-                placeholder="Walk-in Customer"
-                value={manualOrderData.customerName}
-                onChange={e => setManualOrderData({ ...manualOrderData, customerName: e.target.value })}
-              />
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Product Sold *</label>
-                <select
-                  required
-                  value={manualOrderData.productId}
-                  onChange={e => setManualOrderData({ ...manualOrderData, productId: e.target.value })}
-                >
-                  <option value="">Select a product</option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
+          <form onSubmit={handleCreateManualOrder} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+            <div className="modal-body">
+              <div className="form-section">
+                <div className="form-group">
+                  <label>Customer Name</label>
+                  <input
+                    type="text"
+                    placeholder="Walk-in Customer"
+                    value={manualOrderData.customerName}
+                    onChange={e => setManualOrderData({ ...manualOrderData, customerName: e.target.value })}
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Product Sold *</label>
+                    <select
+                      required
+                      value={manualOrderData.productId}
+                      onChange={e => setManualOrderData({ ...manualOrderData, productId: e.target.value })}
+                    >
+                      <option value="">Select a product</option>
+                      {products.map((product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Total Revenue (EGP) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0.01"
+                      step="0.01"
+                      value={manualOrderData.total}
+                      onChange={e => setManualOrderData({ ...manualOrderData, total: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Quantity Sold *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="1"
+                      value={manualOrderData.quantity}
+                      onChange={e => setManualOrderData({ ...manualOrderData, quantity: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea
+                    placeholder="e.g. Phone order paid cash"
+                    value={manualOrderData.notes}
+                    onChange={e => setManualOrderData({ ...manualOrderData, notes: e.target.value })}
+                  />
+                </div>
               </div>
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Total Revenue (EGP) *</label>
-                <input
-                  type="number"
-                  required
-                  min="0.01"
-                  step="0.01"
-                  value={manualOrderData.total}
-                  onChange={e => setManualOrderData({ ...manualOrderData, total: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Quantity Sold *</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  step="1"
-                  value={manualOrderData.quantity}
-                  onChange={e => setManualOrderData({ ...manualOrderData, quantity: e.target.value })}
-                />
-              </div>
+            <div className="modal-footer">
+              <button type="submit" className="btn btn-primary">
+                Save Manual Order
+              </button>
             </div>
-            <div className="form-group">
-              <label>Notes</label>
-              <textarea
-                placeholder="e.g. Phone order paid cash"
-                value={manualOrderData.notes}
-                onChange={e => setManualOrderData({ ...manualOrderData, notes: e.target.value })}
-              />
-            </div>
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>
-              Save Manual Order
-            </button>
           </form>
         </div>
       </div>
-      {/* Cropper Modal */}
+      {/* Cropper Modal — z-index must be above everything else */}
       {isCropping && imageSrc && (
-        <div className="modal-overlay active" style={{ zIndex: 1000 }}>
-          <div className="modal" style={{ width: '90%', maxWidth: '600px', height: '80vh', display: 'flex', flexDirection: 'column' }}>
-            <button className="modal-close" onClick={() => { setIsCropping(false); setImageSrc(null); }}>&times;</button>
-            <h2>Crop Image</h2>
-            <div style={{ position: 'relative', flex: 1, width: '100%', background: '#333', marginTop: '20px', borderRadius: '8px', overflow: 'hidden' }}>
-              <Cropper
-                image={imageSrc}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
-              />
+        <div className="modal-overlay active" style={{ zIndex: 9999 }}>
+          <div className="modal" style={{ height: '80vh', maxWidth: '600px' }}>
+            <div className="modal-header">
+              <button className="modal-close" onClick={cancelCrop}>&times;</button>
+              <h2>Crop Image</h2>
+              <p className="modal-subtitle">Adjust the framing of your image for the best look.</p>
             </div>
-            <div style={{ padding: '20px 0', display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <label>Zoom</label>
-              <input
-                type="range"
-                value={zoom}
-                min={1}
-                max={3}
-                step={0.1}
-                aria-labelledby="Zoom"
-                onChange={(e) => setZoom(Number(e.target.value))}
-                style={{ flex: 1 }}
-              />
+            
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ position: 'relative', flex: 1, width: '100%', background: '#333', borderRadius: '12px', overflow: 'hidden', minHeight: '300px' }}>
+                <Cropper
+                  image={imageSrc}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onCropComplete={onCropComplete}
+                  onZoomChange={setZoom}
+                />
+              </div>
+              <div style={{ padding: '20px 0', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--brown)' }}>Zoom</label>
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => setZoom(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: 'var(--pink-dark)' }}
+                />
+              </div>
             </div>
-            <button type="button" className="btn btn-primary" onClick={showCroppedImage} disabled={isUploading} style={{ width: '100%', opacity: isUploading ? 0.7 : 1 }}>
-              {isUploading ? 'Uploading to Firebase...' : 'Confirm Crop'}
-            </button>
+
+            <div className="modal-footer" style={{ display: 'flex', gap: '12px' }}>
+              <button type="button" className="btn btn-secondary" onClick={cancelCrop} style={{ flex: 1 }}>
+                Cancel
+              </button>
+              <button type="button" className="btn btn-primary" onClick={showCroppedImage} disabled={isUploading} style={{ flex: 2, opacity: isUploading ? 0.7 : 1 }}>
+                {isUploading ? 'Uploading to Firebase...' : 'Confirm Crop'}
+              </button>
+            </div>
           </div>
         </div>
       )}

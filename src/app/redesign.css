@@ -314,3 +314,36 @@ h3, h4, .cart-item-name, .product-name, .admin-toolbar h3 {
 }
 .footer p, .footer a { color: var(--pink-light) !important; }
 .footer h4 { color: var(--pink) !important; }
+
+/* ── Mobile Overrides ── */
+@media (max-width: 640px) {
+  .modal {
+    border-width: 2px !important;
+    border-radius: 20px 20px 0 0 !important;
+  }
+
+  .cart-item,
+  .cart-summary,
+  .login-card {
+    border-radius: 18px !important;
+    border-width: 2px !important;
+  }
+
+  .product-card {
+    border-width: 3px !important;
+  }
+
+  .btn {
+    box-shadow: 0 4px 0px rgba(0,0,0,0.08);
+  }
+
+  .product-img-wrapper img {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@media (max-width: 400px) {
+  .product-card {
+    border-width: 2px !important;
+  }
+}

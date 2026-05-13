@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Star, ChefHat, Truck, Cookie } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
+import { useCart, resolveImageUrl } from '@/context/CartContext';
 import ProductImageSlider from '@/components/ProductImageSlider';
 
 export default function Home() {
@@ -36,7 +36,7 @@ export default function Home() {
           <div className="hero-image-presentation" style={{ zIndex: 10 }}>
             <div className="hero-arch" style={{ background: 'var(--brown)' }}></div>
             <div className="hero-image-container">
-              <img src={heroImage} alt="Premium Artisan Cookie" className="hero-cookie-premium" style={{ transform: 'rotate(15deg)' }} />
+              <img src={resolveImageUrl(heroImage)} alt="Premium Artisan Cookie" className="hero-cookie-premium" style={{ transform: 'rotate(15deg)' }} />
             </div>
             <div className="sticker pink" style={{ bottom: '10%', right: '10%', transform: 'rotate(-5deg)', width: '120px', fontSize: '1.2rem' }}>LOVE AT<br/>FIRST<br/>BITE</div>
           </div>

@@ -3,17 +3,18 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Cookie, Minus, Plus, Package } from 'lucide-react';
-import { useCart, resolveImageUrl, type BoxFlavorSelection } from '@/context/CartContext';
+import { Cookie, Minus, Plus, Package, X } from 'lucide-react';
+import { useCart, resolveImageUrl, type BoxFlavorSelection, type Product } from '@/context/CartContext';
 import ProductImageSlider from '@/components/ProductImageSlider';
 
 export default function Shop() {
   const { products, addToCart, addBoxToCart } = useCart();
   const [selectedSizes, setSelectedSizes] = useState<Record<string, 'Normal' | 'Mini'>>({});
   
-  // Box builder state — keyed by product ID
-  const [selectedBoxSize, setSelectedBoxSize] = useState<Record<string, number>>({});
-  const [boxSelections, setBoxSelections] = useState<Record<string, Record<string, number>>>({});
+  // Box builder modal state
+  const [boxModalProduct, setBoxModalProduct] = useState<Product | null>(null);
+  const [boxModalSize, setBoxModalSize] = useState<number | null>(null);
+  const [boxModalSelections, setBoxModalSelections] = useState<Record<string, number>>({});
 
   const handleSizeChange = (id: string, size: 'Normal' | 'Mini') => {
     setSelectedSizes(prev => ({ ...prev, [id]: size }));
@@ -35,15 +36,22 @@ export default function Shop() {
     showToast(result.message, result.success ? 'success' : 'error');
   };
 
-  // Box builder helpers
-  const getBoxTotal = (productId: string) => {
-    const sels = boxSelections[productId] || {};
-    return Object.values(sels).reduce((sum, n) => sum + n, 0);
+  // Box modal helpers
+  const openBoxModal = (product: Product) => {
+    setBoxModalProduct(product);
+    setBoxModalSize(null);
+    setBoxModalSelections({});
   };
 
-  const handleFlavorQty = (productId: string, flavorName: string, change: number, maxBox: number) => {
-    setBoxSelections(prev => {
-      const current = { ...(prev[productId] || {}) };
+  const closeBoxModal = () => {
+    setBoxModalProduct(null);
+    setBoxModalSize(null);
+    setBoxModalSelections({});
+  };
+
+  const handleBoxFlavorQty = (flavorName: string, change: number, maxBox: number) => {
+    setBoxModalSelections(prev => {
+      const current = { ...prev };
       const currentQty = current[flavorName] || 0;
       const total = Object.values(current).reduce((s, n) => s + n, 0);
       const newQty = currentQty + change;
@@ -52,24 +60,38 @@ export default function Shop() {
       if (change > 0 && total >= maxBox) return prev;
       
       current[flavorName] = newQty;
-      return { ...prev, [productId]: current };
+      return current;
     });
   };
 
-  const handleAddBox = (productId: string) => {
-    const boxSize = selectedBoxSize[productId];
-    const sels = boxSelections[productId] || {};
-    const selections: BoxFlavorSelection[] = Object.entries(sels)
+  const handleBoxAddToCart = () => {
+    if (!boxModalProduct || !boxModalSize) return;
+    const selections: BoxFlavorSelection[] = Object.entries(boxModalSelections)
       .filter(([_, qty]) => qty > 0)
       .map(([name, quantity]) => ({ name, quantity }));
     
-    const result = addBoxToCart(productId, boxSize, selections);
+    const result = addBoxToCart(boxModalProduct.id, boxModalSize, selections);
     showToast(result.message, result.success ? 'success' : 'error');
     
     if (result.success) {
-      // Reset box builder for this product
-      setBoxSelections(prev => ({ ...prev, [productId]: {} }));
+      closeBoxModal();
     }
+  };
+
+  // Compute box modal pricing
+  const getBoxModalPricing = () => {
+    if (!boxModalProduct || !boxModalSize) return { basePrice: 0, surcharge: 0, total: 0 };
+    const boxOptions = boxModalProduct.boxPricing && boxModalProduct.boxPricing.length > 0
+      ? boxModalProduct.boxPricing
+      : (boxModalProduct.boxSizes || []).map(size => ({ size, price: 0 }));
+    const opt = boxOptions.find(o => o.size === boxModalSize);
+    const basePrice = opt?.price || 0;
+    let surcharge = 0;
+    for (const [fname, qty] of Object.entries(boxModalSelections)) {
+      const fl = boxModalProduct.flavors?.find(f => f.name === fname);
+      if (fl && fl.price > 0) surcharge += fl.price * qty;
+    }
+    return { basePrice, surcharge, total: basePrice + surcharge };
   };
 
   return (
@@ -97,172 +119,50 @@ export default function Shop() {
                 const isCookieItem = p.type === 'item';
                 
                 return (
-                  <div key={p.id} className="product-card" style={isCookieItem ? { gridColumn: '1 / -1' } : undefined}>
-                    {isCookieItem && p.flavors && p.flavors.length > 0 && p.boxSizes && p.boxSizes.length > 0 ? (
-                      /* ── Cookie Item: Box Builder ── */
-                      (() => {
-                        const boxSizes = p.boxSizes!;
-                        const currentBoxSize = selectedBoxSize[p.id] || boxSizes[0];
-                        const sels = boxSelections[p.id] || {};
-                        const totalPicked = Object.values(sels).reduce((s, n) => s + n, 0);
-                        const isFull = totalPicked === currentBoxSize;
-                        
-                        // Calculate total price
-                        let totalPrice = 0;
-                        for (const [fname, qty] of Object.entries(sels)) {
-                          const fl = p.flavors!.find(f => f.name === fname);
-                          if (fl) totalPrice += fl.price * qty;
-                        }
-
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                            {/* Header */}
-                            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                              <div className="product-img-wrapper" style={{ width: '200px', flexShrink: 0 }}>
-                                {isOutOfStock ? (
-                                  <span className="product-stock-badge stock-out">Sold Out</span>
-                                ) : isLowStock ? (
-                                  <span className="product-stock-badge stock-low">Only {p.stock} left</span>
-                                ) : (
-                                  <span className="product-stock-badge stock-in">In Stock</span>
-                                )}
-                                <div style={{ padding: '1rem', height: '100%' }}>
-                                  <ProductImageSlider images={p.images || [p.image]} alt={p.name} />
-                                </div>
-                              </div>
-                              <div className="product-info" style={{ flex: 1, minWidth: '200px' }}>
-                                <h3 className="product-name">{p.name}</h3>
-                                <p className="product-desc">{p.description}</p>
-                                
-                                {/* Box Size Selector */}
-                                <div style={{ marginTop: '12px' }}>
-                                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--brown)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Package size={16} /> Choose Box Size
-                                  </div>
-                                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                    {boxSizes.map(size => (
-                                      <button
-                                        key={size}
-                                        onClick={() => {
-                                          setSelectedBoxSize(prev => ({ ...prev, [p.id]: size }));
-                                          setBoxSelections(prev => ({ ...prev, [p.id]: {} }));
-                                        }}
-                                        style={{
-                                          padding: '10px 20px',
-                                          borderRadius: '50px',
-                                          border: 'none',
-                                          fontSize: '0.9rem',
-                                          fontWeight: currentBoxSize === size ? 700 : 500,
-                                          background: currentBoxSize === size ? 'var(--pink)' : 'var(--off-white)',
-                                          color: 'var(--brown)',
-                                          cursor: 'pointer',
-                                          transition: '0.2s',
-                                        }}
-                                      >
-                                        Box of {size}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Flavor Picker */}
-                            <div style={{ marginTop: '16px', padding: '16px', background: 'var(--off-white)', borderRadius: '16px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--brown)' }}>
-                                  Pick your flavors
+                  <div key={p.id} className="product-card">
+                    {isCookieItem && p.flavors && p.flavors.length > 0 && (p.boxPricing?.length || p.boxSizes?.length) ? (
+                      /* ── Cookie Boxes: Simple card with "Build Your Box" button ── */
+                      <>
+                        <div className="product-img-wrapper">
+                          {isOutOfStock ? (
+                            <span className="product-stock-badge stock-out">Sold Out</span>
+                          ) : isLowStock ? (
+                            <span className="product-stock-badge stock-low">Only {p.stock} left</span>
+                          ) : (
+                            <span className="product-stock-badge stock-in">In Stock</span>
+                          )}
+                          <div style={{ padding: '1rem', height: '100%' }}>
+                            <ProductImageSlider images={p.images || [p.image]} alt={p.name} />
+                          </div>
+                        </div>
+                        <div className="product-info">
+                          <h3 className="product-name">{p.name}</h3>
+                          <p className="product-desc">{p.description}</p>
+                          {(() => {
+                            const boxOptions = p.boxPricing && p.boxPricing.length > 0
+                              ? p.boxPricing
+                              : (p.boxSizes || []).map(size => ({ size, price: 0 }));
+                            const lowestPrice = Math.min(...boxOptions.map(o => o.price));
+                            return (
+                              <div className="product-footer">
+                                <span className="product-price">
+                                  {lowestPrice > 0 ? `From EGP ${lowestPrice}` : 'Custom Box'}
                                 </span>
-                                <span style={{
-                                  fontSize: '0.82rem',
-                                  fontWeight: 600,
-                                  padding: '4px 14px',
-                                  borderRadius: '50px',
-                                  background: isFull ? 'rgba(46,204,113,0.15)' : 'var(--pink)',
-                                  color: isFull ? '#27ae60' : 'var(--brown)',
-                                  transition: '0.2s',
-                                }}>
-                                  {totalPicked} / {currentBoxSize}
-                                </span>
-                              </div>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
-                                {p.flavors!.map(flavor => {
-                                  const qty = sels[flavor.name] || 0;
-                                  return (
-                                    <div key={flavor.name} style={{
-                                      display: 'flex', alignItems: 'center', gap: '10px',
-                                      padding: '10px 12px', borderRadius: '12px',
-                                      background: qty > 0 ? 'rgba(250,209,217,0.3)' : '#fff',
-                                      border: `1.5px solid ${qty > 0 ? 'var(--pink-dark)' : 'var(--pink)'}`,
-                                      transition: '0.2s',
-                                    }}>
-                                      {flavor.image && (
-                                        <img src={resolveImageUrl(flavor.image)} alt={flavor.name}
-                                          style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />
-                                      )}
-                                      <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--brown)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                          {flavor.name}
-                                        </div>
-                                        <div style={{ fontSize: '0.72rem', color: 'var(--brown-light)' }}>
-                                          EGP {flavor.price.toFixed(0)} each
-                                        </div>
-                                      </div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                                        <button
-                                          onClick={() => handleFlavorQty(p.id, flavor.name, -1, currentBoxSize)}
-                                          disabled={qty <= 0}
-                                          style={{
-                                            width: '28px', height: '28px', borderRadius: '50%',
-                                            border: 'none', background: qty > 0 ? 'var(--pink)' : '#eee',
-                                            color: 'var(--brown)', cursor: qty > 0 ? 'pointer' : 'default',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '1rem', fontWeight: 700, transition: '0.15s',
-                                          }}
-                                        >
-                                          <Minus size={14} />
-                                        </button>
-                                        <span style={{ width: '24px', textAlign: 'center', fontSize: '0.9rem', fontWeight: 700, color: 'var(--brown)' }}>
-                                          {qty}
-                                        </span>
-                                        <button
-                                          onClick={() => handleFlavorQty(p.id, flavor.name, 1, currentBoxSize)}
-                                          disabled={totalPicked >= currentBoxSize}
-                                          style={{
-                                            width: '28px', height: '28px', borderRadius: '50%',
-                                            border: 'none', background: totalPicked < currentBoxSize ? 'var(--pink)' : '#eee',
-                                            color: 'var(--brown)', cursor: totalPicked < currentBoxSize ? 'pointer' : 'default',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontSize: '1rem', fontWeight: 700, transition: '0.15s',
-                                          }}
-                                        >
-                                          <Plus size={14} />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              {/* Footer: price + add to cart */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--pink)' }}>
-                                <div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--brown-light)' }}>Box Total</div>
-                                  <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--brown)' }}>EGP {totalPrice.toFixed(2)}</div>
-                                </div>
-                                <button
-                                  className="add-to-cart-btn btn-primary"
-                                  disabled={isOutOfStock || !isFull}
-                                  onClick={() => handleAddBox(p.id)}
-                                  style={{ opacity: isFull ? 1 : 0.5 }}
+                                <button 
+                                  className="add-to-cart-btn btn-primary" 
+                                  onClick={() => openBoxModal(p)}
+                                  disabled={isOutOfStock}
+                                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                                 >
-                                  {isOutOfStock ? 'Sold Out' : !isFull ? `Fill ${currentBoxSize - totalPicked} more` : '+ Add Box to Cart'}
+                                  {isOutOfStock ? 'Sold Out' : (
+                                    <><Package size={16} /> Build Your Box</>
+                                  )}
                                 </button>
                               </div>
-                            </div>
-                          </div>
-                        );
-                      })()
+                            );
+                          })()}
+                        </div>
+                      </>
                     ) : (
                       /* ── Cookie Cake: Normal/Mini size selector ── */
                       <>
@@ -326,6 +226,209 @@ export default function Shop() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          BOX BUILDER MODAL
+          ══════════════════════════════════════════════ */}
+      <div className={`modal-overlay ${boxModalProduct ? 'active' : ''}`}>
+        {boxModalProduct && (() => {
+          const p = boxModalProduct;
+          const boxOptions = p.boxPricing && p.boxPricing.length > 0
+            ? p.boxPricing
+            : (p.boxSizes || []).map(size => ({ size, price: 0 }));
+          const totalPicked = Object.values(boxModalSelections).reduce((s, n) => s + n, 0);
+          const isFull = boxModalSize != null && totalPicked === boxModalSize;
+          const { basePrice, surcharge, total } = getBoxModalPricing();
+
+          return (
+            <div className="modal" style={{ maxWidth: '600px' }}>
+              <div className="modal-header">
+                <button className="modal-close" onClick={closeBoxModal}><X size={18} /></button>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Package size={22} /> {p.name}
+                </h2>
+                <p className="modal-subtitle">{p.description}</p>
+              </div>
+
+              <div className="modal-body">
+                {/* Product image */}
+                {p.image && (
+                  <div style={{ width: '100%', height: 'clamp(120px, 25vw, 180px)', borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', background: 'var(--off-white)' }}>
+                    <img src={resolveImageUrl(p.image)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'none' }} />
+                  </div>
+                )}
+
+                {/* Step 1: Choose box size */}
+                <div className="form-section">
+                  <div className="form-section-title">
+                    <Package size={16} /> Choose your box
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    {boxOptions.map(opt => {
+                      const isActive = boxModalSize === opt.size;
+                      return (
+                        <button
+                          key={opt.size}
+                          onClick={() => {
+                            setBoxModalSize(opt.size);
+                            setBoxModalSelections({});
+                          }}
+                          style={{
+                            padding: '12px 16px',
+                            borderRadius: '14px',
+                            border: isActive ? '2px solid var(--brown)' : '2px solid rgba(250,209,217,0.6)',
+                            fontSize: '0.85rem',
+                            fontWeight: isActive ? 700 : 500,
+                            background: isActive ? 'var(--pink)' : '#fff',
+                            color: 'var(--brown)',
+                            cursor: 'pointer',
+                            transition: '0.2s',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '2px',
+                            flex: '1 1 0',
+                            minWidth: '80px',
+                          }}
+                        >
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Box of {opt.size}</span>
+                          {opt.price > 0 && (
+                            <span style={{ fontSize: '0.78rem', color: isActive ? 'var(--brown)' : 'var(--brown-light)' }}>
+                              EGP {opt.price}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Step 2: Fill your box (only after size chosen) */}
+                {boxModalSize != null && (
+                  <div className="form-section">
+                    <div className="form-section-title" style={{ justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Cookie size={16} /> Fill your box
+                      </div>
+                      <span style={{
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        padding: '4px 14px',
+                        borderRadius: '50px',
+                        background: isFull ? 'rgba(46,204,113,0.15)' : 'var(--pink)',
+                        color: isFull ? '#27ae60' : 'var(--brown)',
+                        transition: '0.25s',
+                        border: 'none',
+                        textTransform: 'none',
+                        letterSpacing: '0',
+                      }}>
+                        {totalPicked} / {boxModalSize}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {p.flavors!.map(flavor => {
+                        const qty = boxModalSelections[flavor.name] || 0;
+                        const hasSurcharge = flavor.price && flavor.price > 0;
+                        return (
+                          <div key={flavor.name} style={{
+                            display: 'flex', alignItems: 'center', gap: '10px',
+                            padding: '8px 10px', borderRadius: '12px',
+                            background: qty > 0 ? 'rgba(250,209,217,0.2)' : '#fff',
+                            border: `1.5px solid ${qty > 0 ? 'var(--pink-dark)' : 'rgba(250,209,217,0.5)'}`,
+                            transition: '0.2s',
+                          }}>
+                            {flavor.image && (
+                              <img src={resolveImageUrl(flavor.image)} alt={flavor.name}
+                                style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0, transform: 'none' }} />
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--brown)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {flavor.name}
+                              </div>
+                              {hasSurcharge ? (
+                                <div style={{ fontSize: '0.72rem', color: '#c0392b', fontWeight: 600 }}>
+                                  + EGP {flavor.price.toFixed(0)} each
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--brown-light)' }}>
+                                  Included
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                              <button
+                                onClick={() => handleBoxFlavorQty(flavor.name, -1, boxModalSize)}
+                                disabled={qty <= 0}
+                                style={{
+                                  width: '30px', height: '30px', borderRadius: '50%',
+                                  border: 'none', background: qty > 0 ? 'var(--pink)' : '#eee',
+                                  color: 'var(--brown)', cursor: qty > 0 ? 'pointer' : 'default',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: '0.15s',
+                                }}
+                              >
+                                <Minus size={16} />
+                              </button>
+                              <span style={{ width: '26px', textAlign: 'center', fontSize: '1rem', fontWeight: 700, color: 'var(--brown)' }}>
+                                {qty}
+                              </span>
+                              <button
+                                onClick={() => handleBoxFlavorQty(flavor.name, 1, boxModalSize)}
+                                disabled={totalPicked >= boxModalSize}
+                                style={{
+                                  width: '30px', height: '30px', borderRadius: '50%',
+                                  border: 'none', background: totalPicked < boxModalSize ? 'var(--pink)' : '#eee',
+                                  color: 'var(--brown)', cursor: totalPicked < boxModalSize ? 'pointer' : 'default',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: '0.15s',
+                                }}
+                              >
+                                <Plus size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer: Total + Add to Cart */}
+              <div className="modal-footer">
+                {boxModalSize != null && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--brown-light)' }}>Box Total</div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--brown)' }}>
+                        EGP {total.toFixed(0)}
+                        {surcharge > 0 && (
+                          <span style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--brown-light)', marginLeft: '6px' }}>
+                            (incl. +{surcharge.toFixed(0)} surcharge)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%', opacity: isFull ? 1 : 0.5 }}
+                  disabled={!isFull}
+                  onClick={handleBoxAddToCart}
+                >
+                  {boxModalSize == null
+                    ? 'Select a box size first'
+                    : !isFull
+                      ? `Fill ${boxModalSize - totalPicked} more cookie${boxModalSize - totalPicked !== 1 ? 's' : ''}`
+                      : '+ Add Box to Cart'
+                  }
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

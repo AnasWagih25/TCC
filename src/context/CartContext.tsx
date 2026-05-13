@@ -25,13 +25,14 @@ export type Product = {
   images?: string[];
   type?: 'cake' | 'item';
   flavors?: Flavor[];
-  boxSizes?: number[];
+  boxSizes?: number[]; // Legacy, keeping for backwards compat if needed
+  boxPricing?: { size: number; price: number }[];
 };
 
 /** Resolve an image string to a displayable URL */
 export function resolveImageUrl(img: string): string {
   if (!img) return '/images/preview.png';
-  if (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('data:') || img.startsWith('blob:')) {
+  if (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('data:') || img.startsWith('blob:') || img.startsWith('/')) {
     return img;
   }
   return `/images/${img}`;
@@ -122,6 +123,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (savedProducts) setProducts(JSON.parse(savedProducts));
     else setProducts(defaultProducts);
 
+    // Load cached hero image if available
+    const savedHero = localStorage.getItem('tcc_hero_image');
+    if (savedHero) setHeroImage(savedHero);
+
     // Unblock the UI immediately!
     setIsLoaded(true);
 
@@ -135,7 +140,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           productsSnap.forEach(document => {
             liveProducts.push(document.data() as Product);
           });
+          // Always overwrite with Firestore data — this is the source of truth
           setProducts(liveProducts);
+          // Update localStorage immediately so next load has fresh data
+          try { localStorage.setItem('tcc_products', JSON.stringify(liveProducts)); } catch (e) {}
         } else {
           // If Firestore is completely empty, upload default products
           for (const p of defaultProducts) {
@@ -162,7 +170,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // Fetch hero image from Firestore
         const heroSnap = await getDoc(doc(db, 'settings', 'homepage'));
         if (heroSnap.exists()) {
-          setHeroImage(heroSnap.data().heroImage);
+          const heroUrl = heroSnap.data().heroImage;
+          setHeroImage(heroUrl);
+          // Cache hero image in localStorage
+          try { localStorage.setItem('tcc_hero_image', heroUrl); } catch (e) {}
         }
 
         // Fetch promo settings
@@ -252,12 +263,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const totalCookies = selections.reduce((sum, s) => sum + s.quantity, 0);
     if (totalCookies !== boxSize) return { success: false, message: `Please select exactly ${boxSize} cookies` };
 
-    // Calculate total price: sum of (flavor price × quantity)
+    // Calculate total price from boxPricing + any flavor surcharges
     let totalPrice = 0;
+    if (product.boxPricing && product.boxPricing.length > 0) {
+      const boxOption = product.boxPricing.find(bp => bp.size === boxSize);
+      if (boxOption) {
+        totalPrice = boxOption.price;
+      }
+    }
+    
+    // Add flavor surcharges (if any)
     for (const sel of selections) {
       const flavor = product.flavors.find(f => f.name === sel.name);
       if (!flavor) return { success: false, message: `Flavor "${sel.name}" not found` };
-      totalPrice += flavor.price * sel.quantity;
+      totalPrice += (flavor.price || 0) * sel.quantity;
     }
 
     const { price, ...productWithoutPrice } = product;
@@ -370,6 +389,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateHeroImage = async (url: string) => {
     await setDoc(doc(db, 'settings', 'homepage'), { heroImage: url }, { merge: true });
     setHeroImage(url);
+    try { localStorage.setItem('tcc_hero_image', url); } catch (e) {}
   };
 
   const updatePromoSettings = async (promo: PromoCode) => {
