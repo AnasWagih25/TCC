@@ -3,13 +3,17 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Cookie, Minus, Plus, Package, X } from 'lucide-react';
+import { Cookie, Minus, Plus, Package, X, ShoppingCart, AlertCircle } from 'lucide-react';
 import { useCart, resolveImageUrl, type BoxFlavorSelection, type Product } from '@/context/CartContext';
 import ProductImageSlider from '@/components/ProductImageSlider';
 
 export default function Shop() {
   const { products, addToCart, addBoxToCart } = useCart();
   const [selectedSizes, setSelectedSizes] = useState<Record<string, 'Normal' | 'Mini'>>({});
+
+  // Product detail modal state
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+  const [detailSize, setDetailSize] = useState<'Normal' | 'Mini'>('Normal');
   
   // Box builder modal state
   const [boxModalProduct, setBoxModalProduct] = useState<Product | null>(null);
@@ -34,7 +38,20 @@ export default function Shop() {
   const handleAddToCart = (id: string, size: 'Normal' | 'Mini', flavorName?: string) => {
     const result = addToCart(id, size, flavorName);
     showToast(result.message, result.success ? 'success' : 'error');
+    if (result.success && detailProduct) setDetailProduct(null);
   };
+
+  // Product detail modal helpers
+  const openDetailModal = (product: Product) => {
+    const isCookieItem = product.type === 'item';
+    if (isCookieItem && product.flavors && product.flavors.length > 0 && (product.boxPricing?.length || product.boxSizes?.length)) {
+      openBoxModal(product);
+      return;
+    }
+    setDetailProduct(product);
+    setDetailSize('Normal');
+  };
+  const closeDetailModal = () => setDetailProduct(null);
 
   // Box modal helpers
   const openBoxModal = (product: Product) => {
@@ -117,115 +134,130 @@ export default function Shop() {
                 const isOutOfStock = p.stock <= 0;
                 const isLowStock = p.stock > 0 && p.stock <= 10;
                 const isCookieItem = p.type === 'item';
-                
+                const isCookie = p.type === 'cookie';
+                const isBoxProduct = isCookieItem && p.flavors && p.flavors.length > 0 && (p.boxPricing?.length || p.boxSizes?.length);
+
+                let displayPrice = '';
+                if (isBoxProduct) {
+                  const boxOpts = p.boxPricing && p.boxPricing.length > 0 ? p.boxPricing : (p.boxSizes || []).map(s => ({ size: s, price: 0 }));
+                  const low = Math.min(...boxOpts.map(o => o.price));
+                  displayPrice = low > 0 ? `From EGP ${low}` : 'Custom Box';
+                } else {
+                  displayPrice = `EGP ${Number(p.price.normal).toFixed(0)}`;
+                }
+
                 return (
-                  <div key={p.id} className="product-card">
-                    {isCookieItem && p.flavors && p.flavors.length > 0 && (p.boxPricing?.length || p.boxSizes?.length) ? (
-                      /* ── Cookie Boxes: Simple card with "Build Your Box" button ── */
-                      <>
-                        <div className="product-img-wrapper">
-                          {isOutOfStock ? (
-                            <span className="product-stock-badge stock-out">Sold Out</span>
-                          ) : isLowStock ? (
-                            <span className="product-stock-badge stock-low">Only {p.stock} left</span>
-                          ) : (
-                            <span className="product-stock-badge stock-in">In Stock</span>
-                          )}
-                          <div style={{ padding: '1rem', height: '100%' }}>
-                            <ProductImageSlider images={p.images || [p.image]} alt={p.name} />
-                          </div>
-                        </div>
-                        <div className="product-info">
-                          <h3 className="product-name">{p.name}</h3>
-                          <p className="product-desc">{p.description}</p>
-                          {(() => {
-                            const boxOptions = p.boxPricing && p.boxPricing.length > 0
-                              ? p.boxPricing
-                              : (p.boxSizes || []).map(size => ({ size, price: 0 }));
-                            const lowestPrice = Math.min(...boxOptions.map(o => o.price));
-                            return (
-                              <div className="product-footer">
-                                <span className="product-price">
-                                  {lowestPrice > 0 ? `From EGP ${lowestPrice}` : 'Custom Box'}
-                                </span>
-                                <button 
-                                  className="add-to-cart-btn btn-primary" 
-                                  onClick={() => openBoxModal(p)}
-                                  disabled={isOutOfStock}
-                                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                                >
-                                  {isOutOfStock ? 'Sold Out' : (
-                                    <><Package size={16} /> Build Your Box</>
-                                  )}
-                                </button>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </>
-                    ) : (
-                      /* ── Cookie Cake: Normal/Mini size selector ── */
-                      <>
-                        <div className="product-img-wrapper">
-                          {isOutOfStock ? (
-                            <span className="product-stock-badge stock-out">Sold Out</span>
-                          ) : isLowStock ? (
-                            <span className="product-stock-badge stock-low">Only {p.stock} left</span>
-                          ) : (
-                            <span className="product-stock-badge stock-in">In Stock</span>
-                          )}
-                          <div style={{ padding: '1rem', height: '100%' }}>
-                            <ProductImageSlider images={p.images || [p.image]} alt={p.name} />
-                          </div>
-                        </div>
-                        <div className="product-info">
-                          <h3 className="product-name">{p.name}</h3>
-                          <p className="product-desc">{p.description}</p>
-                          {(() => {
-                            const size = selectedSizes[p.id] || 'Normal';
-                            const currentPrice = size === 'Normal' ? p.price.normal : p.price.mini;
-                            return (
-                              <>
-                                <div className="size-selector" style={{ background: 'var(--off-white)', padding: '5px', borderRadius: '50px', display: 'flex', gap: '0' }}>
-                                  <button 
-                                    className={size === 'Normal' ? 'active' : ''} 
-                                    onClick={() => handleSizeChange(p.id, 'Normal')}
-                                    style={{ flex: 1, borderRadius: '50px', border: 'none', padding: '8px 0', fontSize: '1rem', background: size === 'Normal' ? 'var(--pink)' : 'transparent', fontWeight: size === 'Normal' ? 700 : 500, transition: '0.2s', color: 'var(--brown)' }}
-                                  >
-                                    <div style={{ lineHeight: 1.1 }}>Normal</div>
-                                    <div style={{ fontSize: '0.7rem', fontWeight: 400, marginTop: '2px', opacity: 0.8 }}>(7-8 Slices)</div>
-                                  </button>
-                                  <button 
-                                    className={size === 'Mini' ? 'active' : ''} 
-                                    onClick={() => handleSizeChange(p.id, 'Mini')}
-                                    style={{ flex: 1, borderRadius: '50px', border: 'none', padding: '8px 0', fontSize: '1rem', background: size === 'Mini' ? 'var(--pink)' : 'transparent', fontWeight: size === 'Mini' ? 700 : 500, transition: '0.2s', color: 'var(--brown)' }}
-                                  >
-                                    <div style={{ lineHeight: 1.1 }}>Mini</div>
-                                    <div style={{ fontSize: '0.7rem', fontWeight: 400, marginTop: '2px', opacity: 0.8 }}>(5 Slices)</div>
-                                  </button>
-                                </div>
-                                <div className="product-footer">
-                                  <span className="product-price">EGP {Number(currentPrice).toFixed(2)}</span>
-                                  <button 
-                                    className="add-to-cart-btn btn-primary" 
-                                    onClick={() => handleAddToCart(p.id, size)}
-                                    disabled={isOutOfStock}
-                                  >
-                                    {isOutOfStock ? 'Sold Out' : '+ Add to Cart'}
-                                  </button>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </>
-                    )}
+                  <div key={p.id} className="product-card" onClick={() => openDetailModal(p)} style={{ cursor: 'pointer' }}>
+                    <div className="product-img-wrapper">
+                      {isOutOfStock ? (
+                        <span className="product-stock-badge stock-out">Sold Out</span>
+                      ) : isLowStock ? (
+                        <span className="product-stock-badge stock-low">Only {p.stock} left</span>
+                      ) : (
+                        <span className="product-stock-badge stock-in">In Stock</span>
+                      )}
+                      <div style={{ padding: '1rem', height: '100%' }}>
+                        <ProductImageSlider images={p.images || [p.image]} alt={p.name} />
+                      </div>
+                    </div>
+                    <div className="product-info">
+                      <h3 className="product-name">{p.name}</h3>
+                      <p className="product-desc">{isCookie ? (p.flavor || '') : p.description}</p>
+                      <div className="product-footer">
+                        <span className="product-price">{displayPrice}</span>
+                        <button
+                          className="add-to-cart-btn btn-primary"
+                          onClick={(e) => { e.stopPropagation(); openDetailModal(p); }}
+                          disabled={isOutOfStock}
+                          style={isBoxProduct ? { display: 'flex', alignItems: 'center', gap: '6px' } : {}}
+                        >
+                          {isOutOfStock ? 'Sold Out' : isBoxProduct ? (<><Package size={16} /> Build Box</>) : 'View Details'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 );
               })
             )}
           </div>
         </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          PRODUCT DETAIL MODAL
+          ══════════════════════════════════════════════ */}
+      <div className={`modal-overlay ${detailProduct ? 'active' : ''}`} onClick={closeDetailModal}>
+        {detailProduct && (() => {
+          const p = detailProduct;
+          const isOut = p.stock <= 0;
+          const isLow = p.stock > 0 && p.stock <= 10;
+          const isCk = p.type === 'cookie';
+          const curPrice = isCk ? p.price.normal : (detailSize === 'Normal' ? p.price.normal : p.price.mini);
+          return (
+            <div className="modal pdm" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: 0, overflow: 'hidden' }}>
+              <button className="modal-close" onClick={closeDetailModal} style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(6px)', borderRadius: '50%', width: '36px', height: '36px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <X size={18} color="var(--brown)" />
+              </button>
+              {/* Hero image */}
+              <div style={{ width: '100%', height: 'clamp(200px, 40vw, 300px)', background: 'var(--off-white)', position: 'relative', overflow: 'hidden' }}>
+                <img src={resolveImageUrl(p.image)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'none' }} />
+                <div style={{ position: 'absolute', bottom: '12px', left: '12px' }}>
+                  {isOut ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '50px', background: 'rgba(231,76,60,0.9)', color: '#fff', fontSize: '0.78rem', fontWeight: 600, backdropFilter: 'blur(4px)' }}><AlertCircle size={14} /> Sold Out</span>
+                  ) : isLow ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '50px', background: 'rgba(243,156,18,0.9)', color: '#fff', fontSize: '0.78rem', fontWeight: 600, backdropFilter: 'blur(4px)' }}>Only {p.stock} left!</span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '50px', background: 'rgba(46,204,113,0.9)', color: '#fff', fontSize: '0.78rem', fontWeight: 600, backdropFilter: 'blur(4px)' }}><Cookie size={14} /> In Stock</span>
+                  )}
+                </div>
+              </div>
+              {/* Content */}
+              <div style={{ padding: '20px 24px 24px' }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--brown)', margin: '0 0 6px', lineHeight: 1.2 }}>{p.name}</h2>
+                {isCk && p.flavor ? (
+                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--brown-light)', fontSize: '0.9rem', margin: '0 0 16px', fontStyle: 'italic' }}><Cookie size={14} /> {p.flavor}</p>
+                ) : p.description ? (
+                  <p style={{ color: 'var(--brown-light)', fontSize: '0.88rem', margin: '0 0 16px', lineHeight: 1.5 }}>{p.description}</p>
+                ) : null}
+
+                {/* Size selector for cakes */}
+                {!isCk && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--brown)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Choose Size</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      {(['Normal', 'Mini'] as const).map(sz => {
+                        const active = detailSize === sz;
+                        const pr = sz === 'Normal' ? p.price.normal : p.price.mini;
+                        return (
+                          <button key={sz} onClick={() => setDetailSize(sz)} style={{ flex: 1, padding: '12px 8px', borderRadius: '14px', border: active ? '2px solid var(--brown)' : '2px solid var(--pink)', background: active ? 'var(--pink)' : '#fff', cursor: 'pointer', transition: '0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--brown)' }}>{sz}</span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--brown-light)' }}>{sz === 'Normal' ? '7-8 Slices' : '5 Slices'}</span>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--brown)', marginTop: '2px' }}>EGP {Number(pr).toFixed(0)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '16px', borderTop: '1px solid var(--pink)' }}>
+                  <div style={{ flex: '0 0 auto' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--brown-light)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Price</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--brown)', fontFamily: 'var(--font-display)' }}>EGP {Number(curPrice).toFixed(2)}</div>
+                  </div>
+                  <button
+                    disabled={isOut}
+                    onClick={() => handleAddToCart(p.id, isCk ? 'Normal' : detailSize)}
+                    style={{ flex: 1, padding: '14px 20px', borderRadius: '50px', border: 'none', background: isOut ? '#ccc' : 'var(--brown)', color: '#fff', fontSize: '0.95rem', fontWeight: 700, cursor: isOut ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s', fontFamily: 'var(--font-body)', opacity: isOut ? 0.6 : 1 }}
+                  >
+                    {isOut ? 'Sold Out' : (<><ShoppingCart size={18} /> Add to Cart</>)}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ══════════════════════════════════════════════

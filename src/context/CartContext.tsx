@@ -23,10 +23,11 @@ export type Product = {
   stock: number;
   image: string;
   images?: string[];
-  type?: 'cake' | 'item';
+  type?: 'cake' | 'item' | 'cookie';
   flavors?: Flavor[];
   boxSizes?: number[]; // Legacy, keeping for backwards compat if needed
   boxPricing?: { size: number; price: number }[];
+  flavor?: string;
 };
 
 /** Resolve an image string to a displayable URL */

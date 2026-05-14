@@ -120,9 +120,9 @@ export default function AdminDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
-    name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: ''
+    name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: '', flavor: ''
   });
-  const [productType, setProductType] = useState<'cake' | 'item'>('cake');
+  const [productType, setProductType] = useState<'cake' | 'item' | 'cookie'>('cake');
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [boxPricing, setBoxPricing] = useState<{size: number, price: number}[]>([
     { size: 6, price: 250 },
@@ -244,7 +244,7 @@ export default function AdminDashboard() {
 
   const handleOpenAddModal = () => {
     setEditingProduct(null);
-    setFormData({ name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: '' });
+    setFormData({ name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: '', flavor: '' });
     setProductType('cake');
     setFlavors([]);
     setBoxPricing([{ size: 6, price: 250 }, { size: 12, price: 450 }]);
@@ -259,7 +259,8 @@ export default function AdminDashboard() {
       priceNormal: p.price.normal.toString(), 
       priceMini: p.price.mini.toString(), 
       stock: p.stock.toString(), 
-      image: p.image 
+      image: p.image,
+      flavor: p.flavor || ''
     });
     setProductType(p.type || 'cake');
     setFlavors(p.flavors || []);
@@ -276,6 +277,7 @@ export default function AdminDashboard() {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const isItem = productType === 'item';
+    const isCookie = productType === 'cookie';
     const productFlavors = isItem ? flavors.filter(f => f.name.trim()) : [];
     
     // Main image is always formData.image; flavor images are secondary
@@ -293,10 +295,10 @@ export default function AdminDashboard() {
     const newProduct: Product = {
       id: editingProduct ? editingProduct.id : 'prod_' + Date.now(),
       name: formData.name,
-      description: formData.description,
+      description: isCookie ? (formData.flavor || '') : formData.description,
       price: {
         normal: parseFloat(formData.priceNormal) || 0,
-        mini: parseFloat(formData.priceMini) || 0
+        mini: isCookie ? 0 : (parseFloat(formData.priceMini) || 0)
       },
       stock: parseInt(formData.stock, 10),
       image: mainImage || productImages[0] || '',
@@ -305,6 +307,7 @@ export default function AdminDashboard() {
       flavors: productFlavors.length > 0 ? productFlavors : [],
       boxSizes: parsedBoxSizes,
       boxPricing: parsedBoxPricing,
+      ...(isCookie ? { flavor: formData.flavor } : {}),
     };
     
     try {
@@ -633,8 +636,10 @@ export default function AdminDashboard() {
                     <div key={p.id} className="admin-product-card">
                       <img src={resolveImageUrl(p.image)} alt={p.name} className="admin-product-img" />
                       <div className="admin-product-info">
-                        <h4>{p.name} <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '50px', background: p.type === 'item' ? 'rgba(99,61,45,0.1)' : 'var(--pink)', color: 'var(--brown)', fontWeight: 500, marginLeft: '6px', fontFamily: '"Inter", sans-serif' }}>{p.type === 'item' ? 'Item' : 'Cake'}</span></h4>
-                        {p.type === 'item' && p.flavors && p.flavors.length > 0 ? (
+                        <h4>{p.name} <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '50px', background: p.type === 'item' ? 'rgba(99,61,45,0.1)' : p.type === 'cookie' ? 'rgba(210,150,80,0.15)' : 'var(--pink)', color: 'var(--brown)', fontWeight: 500, marginLeft: '6px', fontFamily: '"Inter", sans-serif' }}>{p.type === 'item' ? 'Item' : p.type === 'cookie' ? 'Cookie' : 'Cake'}</span></h4>
+                        {p.type === 'cookie' ? (
+                          <div className="price">EGP {p.price.normal.toFixed(2)}{p.flavor ? ` · ${p.flavor}` : ''}</div>
+                        ) : p.type === 'item' && p.flavors && p.flavors.length > 0 ? (
                           <div className="price">{p.flavors.length} flavor{p.flavors.length > 1 ? 's' : ''} · EGP {Math.min(...p.flavors.map(f => f.price)).toFixed(0)}–{Math.max(...p.flavors.map(f => f.price)).toFixed(0)}</div>
                         ) : (
                           <div className="price">Normal: EGP {p.price.normal.toFixed(2)} | Mini: EGP {p.price.mini.toFixed(2)}</div>
@@ -738,6 +743,10 @@ export default function AdminDashboard() {
                 <div className="form-group">
                   <label>Product Type *</label>
                   <div style={{ display: 'flex', gap: '0', background: 'var(--off-white)', padding: '4px', borderRadius: '50px', marginTop: '6px' }}>
+                    <button type="button" onClick={() => { setProductType('cookie'); setFlavors([]); }}
+                      style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'cookie' ? 700 : 500, background: productType === 'cookie' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
+                      Cookie
+                    </button>
                     <button type="button" onClick={() => { setProductType('cake'); setFlavors([]); }}
                       style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'cake' ? 700 : 500, background: productType === 'cake' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
                       Cookie Cake
@@ -748,17 +757,24 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                   <p className="form-hint">
-                    {productType === 'cake' ? 'Cookie Cake with Normal & Mini sizes.' : 'Cookie Item with different flavors & per-flavor pricing.'}
+                    {productType === 'cookie' ? 'A simple cookie with a flavor and price.' : productType === 'cake' ? 'Cookie Cake with Normal & Mini sizes.' : 'Cookie Item with different flavors & per-flavor pricing.'}
                   </p>
                 </div>
                 <div className="form-group">
                   <label>Name *</label>
-                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Classic Chocolate Chip" />
+                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder={productType === 'cookie' ? 'e.g. Chocolate Chip Cookie' : 'e.g. Classic Chocolate Chip'} />
                 </div>
-                <div className="form-group">
-                  <label>Description *</label>
-                  <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Brief description of the product" />
-                </div>
+                {productType === 'cookie' ? (
+                  <div className="form-group">
+                    <label>Flavor *</label>
+                    <input type="text" required value={formData.flavor} onChange={e => setFormData({...formData, flavor: e.target.value})} placeholder="e.g. Double Chocolate, Red Velvet" />
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label>Description *</label>
+                    <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Brief description of the product" />
+                  </div>
+                )}
                 <div className="form-group" style={{ marginTop: '16px' }}>
                   <label>Main Product Image</label>
                   <p className="form-hint" style={{ marginBottom: '8px' }}>This image represents the product in the shop.</p>
@@ -773,7 +789,21 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {productType === 'cake' ? (
+              {productType === 'cookie' ? (
+                <div className="form-section">
+                  <div className="form-section-title">Pricing & Inventory</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Price (EGP) *</label>
+                      <input type="number" required min="0.01" step="0.01" value={formData.priceNormal} onChange={e => setFormData({...formData, priceNormal: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label>Stock Quantity *</label>
+                      <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+              ) : productType === 'cake' ? (
                 <div className="form-section">
                   <div className="form-section-title">Pricing & Inventory</div>
                   <div className="form-row">
