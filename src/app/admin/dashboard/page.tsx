@@ -552,9 +552,22 @@ export default function AdminDashboard() {
                         <div className="order-items-list">
                           <h4>Order Items</h4>
                           {o.items.map((item, i) => (
-                            <div key={i} className="order-product-row">
-                              <span>{item.quantity}x {item.name}</span>
-                              <span>EGP {(item.price * item.quantity).toFixed(2)}</span>
+                            <div key={i}>
+                              <div className="order-product-row">
+                                <span>{item.quantity}x {item.name}{item.boxSize ? ` (Box of ${item.boxSize})` : (item.selectedFlavor ? ` (${item.selectedFlavor})` : ` (${item.selectedSize})`)}</span>
+                                <span>EGP {(item.price * item.quantity).toFixed(2)}</span>
+                              </div>
+                              {item.boxFlavors && item.boxFlavors.length > 0 && (
+                                <div style={{ marginLeft: '16px', marginBottom: '8px', padding: '8px 12px', background: 'var(--pink-light, #FDE8EC)', borderRadius: '8px', fontSize: '0.82rem' }}>
+                                  <div style={{ fontWeight: 600, color: 'var(--brown)', marginBottom: '4px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Flavors Chosen:</div>
+                                  {item.boxFlavors.map((bf, bfi) => (
+                                    <div key={bfi} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: 'var(--brown-light, #7A5243)' }}>
+                                      <span>• {bf.name}</span>
+                                      <span style={{ fontWeight: 600 }}>×{bf.quantity}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))}
                           <div className="order-product-row" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #ccc' }}>

@@ -25,13 +25,36 @@ export async function POST(req: Request) {
       ? `https://www.google.com/maps/search/?api=1&query=${orderData.customer.location.lat},${orderData.customer.location.lng}` 
       : 'No map location provided';
 
-    const itemsHtml = orderData.items.map((item: any) => `
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #FAD1D9;">${item.name} (${item.selectedSize})</td>
-        <td style="padding: 12px; border-bottom: 1px solid #FAD1D9; text-align: center;">${item.quantity}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #FAD1D9; text-align: right;">EGP ${(item.price * item.quantity).toFixed(2)}</td>
-      </tr>
-    `).join('');
+    const itemsHtml = orderData.items.map((item: any) => {
+      const label = item.boxSize 
+        ? `${item.name} (Box of ${item.boxSize})` 
+        : item.selectedFlavor 
+          ? `${item.name} (${item.selectedFlavor})` 
+          : `${item.name} (${item.selectedSize})`;
+
+      let flavorsHtml = '';
+      if (item.boxFlavors && item.boxFlavors.length > 0) {
+        const flavorLines = item.boxFlavors.map((bf: any) => 
+          `<div style="padding: 2px 0; color: #7A5243;">• ${bf.name} <strong>×${bf.quantity}</strong></div>`
+        ).join('');
+        flavorsHtml = `
+          <tr>
+            <td colspan="3" style="padding: 4px 12px 12px 24px; border-bottom: 1px solid #FAD1D9;">
+              <div style="background: #FDE8EC; border-radius: 8px; padding: 8px 12px; font-size: 13px;">
+                <div style="font-weight: 700; color: #633D2D; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Flavors Chosen:</div>
+                ${flavorLines}
+              </div>
+            </td>
+          </tr>`;
+      }
+
+      return `
+        <tr>
+          <td style="padding: 12px; border-bottom: ${flavorsHtml ? 'none' : '1px solid #FAD1D9'};">${label}</td>
+          <td style="padding: 12px; border-bottom: ${flavorsHtml ? 'none' : '1px solid #FAD1D9'}; text-align: center;">${item.quantity}</td>
+          <td style="padding: 12px; border-bottom: ${flavorsHtml ? 'none' : '1px solid #FAD1D9'}; text-align: right;">EGP ${(item.price * item.quantity).toFixed(2)}</td>
+        </tr>${flavorsHtml}`;
+    }).join('');
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #FAD1D9; border-radius: 16px; overflow: hidden; color: #633D2D;">
