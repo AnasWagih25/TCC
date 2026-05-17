@@ -351,8 +351,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const pIndex = updatedProducts.findIndex(p => p.id === cartItem.id);
         if (pIndex !== -1) {
           updatedProducts[pIndex].stock = Math.max(0, updatedProducts[pIndex].stock - cartItem.quantity);
-          // Sync new stock to Firestore
-          await setDoc(doc(db, 'products', updatedProducts[pIndex].id), updatedProducts[pIndex]);
+          // Sync new stock to Firestore (merge true prevents overwriting other fields like price with stale data)
+          await setDoc(doc(db, 'products', updatedProducts[pIndex].id), { stock: updatedProducts[pIndex].stock }, { merge: true });
         }
       }
       setProducts(updatedProducts);
