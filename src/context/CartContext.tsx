@@ -4,6 +4,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+export type Category = {
+  id: string;
+  name: string;
+  hasDescription: boolean;
+  flavorType: 'none' | 'single' | 'array';
+  sizeType: 'none' | 'normal_mini' | 'box_sizes';
+  isBoxBuilder: boolean;
+};
+
 export type ProductPrice = {
   normal: number;
   mini: number;
@@ -23,11 +32,17 @@ export type Product = {
   stock: number;
   image: string;
   images?: string[];
-  type?: 'cake' | 'item' | 'cookie';
+  type?: string;
   flavors?: Flavor[];
   boxSizes?: number[]; // Legacy, keeping for backwards compat if needed
   boxPricing?: { size: number; price: number }[];
   flavor?: string;
+  customizations?: { 
+    name: string; 
+    price: number;
+    pricing?: Record<string, number>; 
+    requiresText?: boolean;
+  }[];
 };
 
 /** Resolve an image string to a displayable URL */
@@ -47,6 +62,7 @@ export type CartItem = Omit<Product, 'price'> & {
   selectedFlavor?: string;
   boxSize?: number;
   boxFlavors?: BoxFlavorSelection[];
+  selectedCustomizations?: { name: string; price: number; text?: string }[];
   price: number; 
 };
 
@@ -82,13 +98,19 @@ const defaultProducts: Product[] = [
   { id: 'p3', name: 'Kinder Chocolate', description: 'Rich dough packed with Kinder chocolate bars and a creamy center.', price: { normal: 499, mini: 300 }, stock: 35, image: 'kinder 1.png', images: ['kinder 1.png'] }
 ];
 
+const defaultCategories: Category[] = [
+  { id: 'cookie', name: 'Cookie', hasDescription: false, flavorType: 'single', sizeType: 'none', isBoxBuilder: false },
+  { id: 'cake', name: 'Cookie Cake', hasDescription: true, flavorType: 'none', sizeType: 'normal_mini', isBoxBuilder: false },
+  { id: 'item', name: 'Cookie Boxes', hasDescription: true, flavorType: 'array', sizeType: 'box_sizes', isBoxBuilder: true }
+];
+
 type CartContextType = {
   products: Product[];
   cart: CartItem[];
   orders: Order[];
   heroImage: string;
-  addToCart: (productId: string, size: 'Normal' | 'Mini', flavorName?: string) => { success: boolean; message: string };
-  addBoxToCart: (productId: string, boxSize: number, selections: BoxFlavorSelection[]) => { success: boolean; message: string };
+  addToCart: (productId: string, size: 'Normal' | 'Mini', flavorName?: string, selectedCustomizations?: { name: string; price: number; text?: string }[]) => { success: boolean; message: string };
+  addBoxToCart: (productId: string, boxSize: number, selections: BoxFlavorSelection[], selectedCustomizations?: { name: string; price: number; text?: string }[]) => { success: boolean; message: string };
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
   removeFromCart: (index: number) => void;
   placeOrder: (customerInfo: any, deliveryFee?: number, discount?: number) => Promise<Order>;
@@ -100,6 +122,10 @@ type CartContextType = {
   deleteOrder: (orderId: string) => void;
   promoSettings: PromoCode | null;
   updatePromoSettings: (promo: PromoCode) => Promise<void>;
+  categories: Category[];
+  addCategory: (category: Category) => Promise<void>;
+  updateCategory: (category: Category) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -110,6 +136,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [heroImage, setHeroImage] = useState<string>('/images/preview.png');
   const [promoSettings, setPromoSettings] = useState<PromoCode | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -123,6 +150,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const savedProducts = localStorage.getItem('tcc_products');
     if (savedProducts) setProducts(JSON.parse(savedProducts));
     else setProducts(defaultProducts);
+
+    const savedCategories = localStorage.getItem('tcc_categories');
+    if (savedCategories) setCategories(JSON.parse(savedCategories));
+    else setCategories(defaultCategories);
 
     // Load cached hero image if available
     const savedHero = localStorage.getItem('tcc_hero_image');
@@ -182,6 +213,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (promoSnap.exists()) {
           setPromoSettings(promoSnap.data() as PromoCode);
         }
+
+        // Fetch categories
+        const categoriesSnap = await getDocs(collection(db, 'categories'));
+        let liveCategories: Category[] = [];
+        if (!categoriesSnap.empty) {
+          categoriesSnap.forEach(document => {
+            liveCategories.push(document.data() as Category);
+          });
+          setCategories(liveCategories);
+          try { localStorage.setItem('tcc_categories', JSON.stringify(liveCategories)); } catch (e) {}
+        } else {
+          for (const c of defaultCategories) {
+            await setDoc(doc(db, 'categories', c.id), c).catch(() => {});
+          }
+          setCategories(defaultCategories);
+          try { localStorage.setItem('tcc_categories', JSON.stringify(defaultCategories)); } catch (e) {}
+        }
+
       } catch (err) {
         console.error('Failed to connect to Firestore. Ensure Firestore Database is created in your Firebase Console.', err);
       }
@@ -213,6 +262,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoaded) {
       try {
+        localStorage.setItem('tcc_categories', JSON.stringify(categories));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [categories, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      try {
         localStorage.setItem('tcc_orders', JSON.stringify(orders));
       } catch (e) {
         console.error(e);
@@ -220,7 +279,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [orders, isLoaded]);
 
-  const addToCart = (productId: string, size: 'Normal' | 'Mini', flavorName?: string) => {
+  const addToCart = (productId: string, size: 'Normal' | 'Mini', flavorName?: string, selectedCustomizations?: { name: string; price: number; text?: string }[]) => {
     const product = products.find(p => p.id === productId);
     if (!product || product.stock <= 0) return { success: false, message: 'Out of stock' };
 
@@ -237,8 +296,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       selectedPrice = size === 'Normal' ? product.price.normal : product.price.mini;
     }
 
+    if (selectedCustomizations) {
+      selectedCustomizations.forEach(c => selectedPrice += c.price);
+    }
+
+    const stringifyCustomizations = (custs?: { name: string; price: number }[]) => {
+      if (!custs || custs.length === 0) return '';
+      return JSON.stringify([...custs].sort((a, b) => a.name.localeCompare(b.name)));
+    };
+
     const existingIndex = cart.findIndex(item => 
-      item.id === productId && item.selectedSize === size && item.selectedFlavor === cartFlavor
+      item.id === productId && item.selectedSize === size && item.selectedFlavor === cartFlavor &&
+      stringifyCustomizations(item.selectedCustomizations) === stringifyCustomizations(selectedCustomizations)
     );
     
     if (existingIndex >= 0) {
@@ -250,13 +319,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setCart(newCart);
     } else {
       const { price, ...productWithoutPrice } = product;
-      setCart([...cart, { ...productWithoutPrice, selectedSize: size, selectedFlavor: cartFlavor, price: selectedPrice, quantity: 1 }]);
+      setCart([...cart, { ...productWithoutPrice, selectedSize: size, selectedFlavor: cartFlavor, selectedCustomizations, price: selectedPrice, quantity: 1 }]);
     }
     
     return { success: true, message: `Added ${product.name}${cartFlavor ? ` (${cartFlavor})` : ''} to cart` };
   };
 
-  const addBoxToCart = (productId: string, boxSize: number, selections: BoxFlavorSelection[]) => {
+  const addBoxToCart = (productId: string, boxSize: number, selections: BoxFlavorSelection[], selectedCustomizations?: { name: string; price: number; text?: string }[]) => {
     const product = products.find(p => p.id === productId);
     if (!product || product.stock <= 0) return { success: false, message: 'Out of stock' };
     if (!product.flavors) return { success: false, message: 'No flavors available' };
@@ -280,12 +349,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       totalPrice += (flavor.price || 0) * sel.quantity;
     }
 
+    if (selectedCustomizations) {
+      selectedCustomizations.forEach(c => totalPrice += c.price);
+    }
+
     const { price, ...productWithoutPrice } = product;
     const boxItem: CartItem = {
       ...productWithoutPrice,
       selectedSize: 'Normal',
       boxSize,
       boxFlavors: selections.filter(s => s.quantity > 0),
+      selectedCustomizations,
       price: totalPrice,
       quantity: 1,
     };
@@ -451,13 +525,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setOrders(orders.filter(order => order.id !== orderId));
   };
 
+  const addCategory = async (category: Category) => {
+    await setDoc(doc(db, 'categories', category.id), category);
+    setCategories(prev => [...prev, category]);
+  };
+
+  const updateCategory = async (category: Category) => {
+    await setDoc(doc(db, 'categories', category.id), category);
+    setCategories(prev => prev.map(c => c.id === category.id ? category : c));
+  };
+
+  const deleteCategory = async (id: string) => {
+    await deleteDoc(doc(db, 'categories', id));
+    setCategories(prev => prev.filter(c => c.id !== id));
+  };
+
   if (!isLoaded) return <div style={{ height: '100vh', background: '#FDE8EC' }}></div>;
 
   return (
     <CartContext.Provider value={{
-      products, cart, orders, heroImage, promoSettings,
+      products, cart, orders, heroImage, promoSettings, categories,
       addToCart, addBoxToCart, updateQuantity, removeFromCart, placeOrder,
-      updateProduct, deleteProduct, updateHeroImage, markOrderFulfilled, addManualOrder, deleteOrder, updatePromoSettings
+      updateProduct, deleteProduct, updateHeroImage, markOrderFulfilled, addManualOrder, deleteOrder, updatePromoSettings,
+      addCategory, updateCategory, deleteCategory
     }}>
       {children}
     </CartContext.Provider>

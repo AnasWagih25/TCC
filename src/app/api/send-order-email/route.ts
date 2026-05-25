@@ -32,17 +32,28 @@ export async function POST(req: Request) {
           ? `${item.name} (${item.selectedFlavor})` 
           : `${item.name} (${item.selectedSize})`;
 
-      let flavorsHtml = '';
+      let extrasHtml = '';
+      let flavorLines = '';
       if (item.boxFlavors && item.boxFlavors.length > 0) {
-        const flavorLines = item.boxFlavors.map((bf: any) => 
+        flavorLines += item.boxFlavors.map((bf: any) => 
           `<div style="padding: 2px 0; color: #7A5243;">• ${bf.name} <strong>×${bf.quantity}</strong></div>`
         ).join('');
-        flavorsHtml = `
+      }
+      
+      let customizationLines = '';
+      if (item.selectedCustomizations && item.selectedCustomizations.length > 0) {
+        customizationLines += item.selectedCustomizations.map((c: any) => 
+          `<div style="padding: 2px 0; color: #7A5243;">• + ${c.name} <strong>(+ EGP ${Number(c.price).toFixed(0)})</strong>${c.text ? `<br><span style="padding-left: 12px; font-size: 12px; font-style: italic;">"${c.text}"</span>` : ''}</div>`
+        ).join('');
+      }
+
+      if (flavorLines || customizationLines) {
+        extrasHtml = `
           <tr>
             <td colspan="3" style="padding: 4px 12px 12px 24px; border-bottom: 1px solid #FAD1D9;">
               <div style="background: #FDE8EC; border-radius: 8px; padding: 8px 12px; font-size: 13px;">
-                <div style="font-weight: 700; color: #633D2D; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Flavors Chosen:</div>
-                ${flavorLines}
+                ${flavorLines ? `<div style="font-weight: 700; color: #633D2D; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Flavors Chosen:</div>${flavorLines}` : ''}
+                ${customizationLines ? `<div style="font-weight: 700; color: #633D2D; margin-top: ${flavorLines ? '8px' : '0'}; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Extra Options:</div>${customizationLines}` : ''}
               </div>
             </td>
           </tr>`;
@@ -50,10 +61,10 @@ export async function POST(req: Request) {
 
       return `
         <tr>
-          <td style="padding: 12px; border-bottom: ${flavorsHtml ? 'none' : '1px solid #FAD1D9'};">${label}</td>
-          <td style="padding: 12px; border-bottom: ${flavorsHtml ? 'none' : '1px solid #FAD1D9'}; text-align: center;">${item.quantity}</td>
-          <td style="padding: 12px; border-bottom: ${flavorsHtml ? 'none' : '1px solid #FAD1D9'}; text-align: right;">EGP ${(item.price * item.quantity).toFixed(2)}</td>
-        </tr>${flavorsHtml}`;
+          <td style="padding: 12px; border-bottom: ${extrasHtml ? 'none' : '1px solid #FAD1D9'};">${label}</td>
+          <td style="padding: 12px; border-bottom: ${extrasHtml ? 'none' : '1px solid #FAD1D9'}; text-align: center;">${item.quantity}</td>
+          <td style="padding: 12px; border-bottom: ${extrasHtml ? 'none' : '1px solid #FAD1D9'}; text-align: right;">EGP ${(item.price * item.quantity).toFixed(2)}</td>
+        </tr>${extrasHtml}`;
     }).join('');
 
     const htmlContent = `

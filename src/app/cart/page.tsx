@@ -55,6 +55,16 @@ export default function Cart() {
                             ))}
                           </div>
                         )}
+                        {item.selectedCustomizations && item.selectedCustomizations.length > 0 && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--brown-light)', marginTop: '4px', lineHeight: 1.6 }}>
+                            {item.selectedCustomizations.map(c => (
+                              <span key={c.name} style={{ display: 'inline-flex', flexDirection: 'column', background: 'rgba(210,150,80,0.15)', color: 'var(--brown)', padding: '2px 8px', borderRadius: '8px', marginRight: '4px', marginBottom: '4px', gap: '2px' }}>
+                                <span>+ {c.name}</span>
+                                {c.text && <span style={{ fontSize: '0.65rem', fontStyle: 'italic', opacity: 0.8 }}>"{c.text}"</span>}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div className="cart-item-price">EGP {Number(item.price).toFixed(2)}{item.boxSize ? '' : ' each'}</div>
                         <div className="quantity-controls">
                           <button className="qty-btn" onClick={() => updateQuantity(index, -1)}>-</button>

@@ -8,17 +8,21 @@ import { useCart, resolveImageUrl, type BoxFlavorSelection, type Product } from 
 import ProductImageSlider from '@/components/ProductImageSlider';
 
 export default function Shop() {
-  const { products, addToCart, addBoxToCart } = useCart();
+  const { products, addToCart, addBoxToCart, categories } = useCart();
   const [selectedSizes, setSelectedSizes] = useState<Record<string, 'Normal' | 'Mini'>>({});
 
   // Product detail modal state
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [detailSize, setDetailSize] = useState<'Normal' | 'Mini'>('Normal');
+  const [detailCustomizations, setDetailCustomizations] = useState<Record<string, boolean>>({});
+  const [detailCustomizationTexts, setDetailCustomizationTexts] = useState<Record<string, string>>({});
   
   // Box builder modal state
   const [boxModalProduct, setBoxModalProduct] = useState<Product | null>(null);
   const [boxModalSize, setBoxModalSize] = useState<number | null>(null);
   const [boxModalSelections, setBoxModalSelections] = useState<Record<string, number>>({});
+  const [boxModalCustomizations, setBoxModalCustomizations] = useState<Record<string, boolean>>({});
+  const [boxModalCustomizationTexts, setBoxModalCustomizationTexts] = useState<Record<string, string>>({});
 
   const handleSizeChange = (id: string, size: 'Normal' | 'Mini') => {
     setSelectedSizes(prev => ({ ...prev, [id]: size }));
@@ -36,20 +40,33 @@ export default function Shop() {
   };
 
   const handleAddToCart = (id: string, size: 'Normal' | 'Mini', flavorName?: string) => {
-    const result = addToCart(id, size, flavorName);
+    const cat = categories.find(c => c.id === detailProduct?.type);
+    const selectedCustomizations = detailProduct?.customizations?.filter(c => detailCustomizations[c.name]).map(c => {
+      const sizePrice = cat?.sizeType === 'normal_mini' ? c.pricing?.[size] : c.price;
+      const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
+      const text = detailCustomizationTexts[c.name];
+      return {
+        name: c.name,
+        price: displayPrice,
+        ...(text ? { text } : {})
+      };
+    }) || [];
+    const result = addToCart(id, size, flavorName, selectedCustomizations);
     showToast(result.message, result.success ? 'success' : 'error');
     if (result.success && detailProduct) setDetailProduct(null);
   };
 
   // Product detail modal helpers
   const openDetailModal = (product: Product) => {
-    const isCookieItem = product.type === 'item';
-    if (isCookieItem && product.flavors && product.flavors.length > 0 && (product.boxPricing?.length || product.boxSizes?.length)) {
+    const cat = categories.find(c => c.id === product.type) || categories[0];
+    if (cat?.isBoxBuilder) {
       openBoxModal(product);
       return;
     }
     setDetailProduct(product);
     setDetailSize('Normal');
+    setDetailCustomizations({});
+    setDetailCustomizationTexts({});
   };
   const closeDetailModal = () => setDetailProduct(null);
 
@@ -58,12 +75,15 @@ export default function Shop() {
     setBoxModalProduct(product);
     setBoxModalSize(null);
     setBoxModalSelections({});
+    setBoxModalCustomizations({});
+    setBoxModalCustomizationTexts({});
   };
 
   const closeBoxModal = () => {
     setBoxModalProduct(null);
     setBoxModalSize(null);
     setBoxModalSelections({});
+    setBoxModalCustomizations({});
   };
 
   const handleBoxFlavorQty = (flavorName: string, change: number, maxBox: number) => {
@@ -87,7 +107,18 @@ export default function Shop() {
       .filter(([_, qty]) => qty > 0)
       .map(([name, quantity]) => ({ name, quantity }));
     
-    const result = addBoxToCart(boxModalProduct.id, boxModalSize, selections);
+    const cat = categories.find(c => c.id === boxModalProduct?.type);
+    const selectedCustomizations = boxModalProduct?.customizations?.filter(c => boxModalCustomizations[c.name]).map(c => {
+      const sizePrice = boxModalSize ? c.pricing?.[boxModalSize.toString()] : c.price;
+      const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
+      const text = boxModalCustomizationTexts[c.name];
+      return {
+        name: c.name,
+        price: displayPrice,
+        ...(text ? { text } : {})
+      };
+    }) || [];
+    const result = addBoxToCart(boxModalProduct.id, boxModalSize, selections, selectedCustomizations);
     showToast(result.message, result.success ? 'success' : 'error');
     
     if (result.success) {
@@ -107,6 +138,11 @@ export default function Shop() {
     for (const [fname, qty] of Object.entries(boxModalSelections)) {
       const fl = boxModalProduct.flavors?.find(f => f.name === fname);
       if (fl && fl.price > 0) surcharge += fl.price * qty;
+    }
+    if (boxModalProduct.customizations) {
+      boxModalProduct.customizations.forEach(c => {
+        if (boxModalCustomizations[c.name]) surcharge += c.price;
+      });
     }
     return { basePrice, surcharge, total: basePrice + surcharge };
   };
@@ -131,11 +167,11 @@ export default function Shop() {
               </div>
             ) : (
               products.map((p) => {
+                const cat = categories.find(c => c.id === p.type) || categories[0];
                 const isOutOfStock = p.stock <= 0;
                 const isLowStock = p.stock > 0 && p.stock <= 10;
-                const isCookieItem = p.type === 'item';
-                const isCookie = p.type === 'cookie';
-                const isBoxProduct = isCookieItem && p.flavors && p.flavors.length > 0 && (p.boxPricing?.length || p.boxSizes?.length);
+                const isBoxProduct = cat?.isBoxBuilder;
+                const isCk = cat?.flavorType === 'single';
 
                 let displayPrice = '';
                 if (isBoxProduct) {
@@ -162,7 +198,7 @@ export default function Shop() {
                     </div>
                     <div className="product-info">
                       <h3 className="product-name">{p.name}</h3>
-                      <p className="product-desc">{isCookie ? (p.flavor || '') : p.description}</p>
+                      <p className="product-desc">{(isCk && !cat?.hasDescription) ? (p.flavor || '') : p.description}</p>
                       <div className="product-footer">
                         <span className="product-price">{displayPrice}</span>
                         <button
@@ -189,10 +225,19 @@ export default function Shop() {
       <div className={`modal-overlay ${detailProduct ? 'active' : ''}`} onClick={closeDetailModal}>
         {detailProduct && (() => {
           const p = detailProduct;
+          const cat = categories.find(c => c.id === p.type) || categories[0];
           const isOut = p.stock <= 0;
           const isLow = p.stock > 0 && p.stock <= 10;
-          const isCk = p.type === 'cookie';
-          const curPrice = isCk ? p.price.normal : (detailSize === 'Normal' ? p.price.normal : p.price.mini);
+          const isCk = cat?.sizeType === 'none';
+          let curPrice = isCk ? p.price.normal : (detailSize === 'Normal' ? p.price.normal : p.price.mini);
+          if (p.customizations) {
+            p.customizations.forEach(c => {
+              if (detailCustomizations[c.name]) {
+                const sizePrice = cat?.sizeType === 'normal_mini' ? c.pricing?.[detailSize] : c.price;
+                curPrice += (sizePrice !== undefined ? sizePrice : c.price);
+              }
+            });
+          }
           return (
             <div className="modal pdm" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: 0, overflow: 'hidden' }}>
               <button className="modal-close" onClick={closeDetailModal} style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(6px)', borderRadius: '50%', width: '36px', height: '36px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
@@ -214,14 +259,14 @@ export default function Shop() {
               {/* Content */}
               <div style={{ padding: '20px 24px 24px' }}>
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--brown)', margin: '0 0 6px', lineHeight: 1.2 }}>{p.name}</h2>
-                {isCk && p.flavor ? (
+                {cat?.flavorType === 'single' && p.flavor ? (
                   <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--brown-light)', fontSize: '0.9rem', margin: '0 0 16px', fontStyle: 'italic' }}><Cookie size={14} /> {p.flavor}</p>
                 ) : p.description ? (
                   <p style={{ color: 'var(--brown-light)', fontSize: '0.88rem', margin: '0 0 16px', lineHeight: 1.5 }}>{p.description}</p>
                 ) : null}
 
                 {/* Size selector for cakes */}
-                {!isCk && (
+                {cat?.sizeType === 'normal_mini' && (
                   <div style={{ marginBottom: '20px' }}>
                     <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--brown)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Choose Size</label>
                     <div style={{ display: 'flex', gap: '10px' }}>
@@ -234,6 +279,36 @@ export default function Shop() {
                             <span style={{ fontSize: '0.72rem', color: 'var(--brown-light)' }}>{sz === 'Normal' ? '7-8 Slices' : '5 Slices'}</span>
                             <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--brown)', marginTop: '2px' }}>EGP {Number(pr).toFixed(0)}</span>
                           </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Customizations */}
+                {p.customizations && p.customizations.length > 0 && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--brown)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Extra Options</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {p.customizations.map(c => {
+                        const sizePrice = cat?.sizeType === 'normal_mini' ? c.pricing?.[detailSize] : c.price;
+                        const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
+                        return (
+                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                              <input type="checkbox" checked={!!detailCustomizations[c.name]}
+                                onChange={e => setDetailCustomizations(prev => ({ ...prev, [c.name]: e.target.checked }))}
+                                style={{ width: '18px', height: '18px', accentColor: 'var(--pink-dark)' }} />
+                              <span style={{ fontSize: '0.9rem', color: 'var(--brown)', flex: 1 }}>{c.name}</span>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--brown-light)', fontWeight: 600 }}>+ EGP {displayPrice.toFixed(0)}</span>
+                            </label>
+                            {c.requiresText && detailCustomizations[c.name] && (
+                              <input type="text" placeholder="Enter text here..." 
+                                value={detailCustomizationTexts[c.name] || ''}
+                                onChange={e => setDetailCustomizationTexts(prev => ({ ...prev, [c.name]: e.target.value }))}
+                                style={{ marginLeft: '28px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--pink)', fontSize: '0.8rem', outline: 'none' }} />
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -419,6 +494,38 @@ export default function Shop() {
                                 <Plus size={16} />
                               </button>
                             </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Customizations for Box */}
+                {p.customizations && p.customizations.length > 0 && (
+                  <div className="form-section">
+                    <div className="form-section-title">
+                      <Plus size={16} /> Extra Options
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {p.customizations.map(c => {
+                        const sizePrice = boxModalSize ? c.pricing?.[boxModalSize.toString()] : c.price;
+                        const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
+                        return (
+                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 10px', borderRadius: '12px', background: boxModalCustomizations[c.name] ? 'rgba(250,209,217,0.2)' : '#fff', border: `1.5px solid ${boxModalCustomizations[c.name] ? 'var(--pink-dark)' : 'rgba(250,209,217,0.5)'}` }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                              <input type="checkbox" checked={!!boxModalCustomizations[c.name]}
+                                onChange={e => setBoxModalCustomizations(prev => ({ ...prev, [c.name]: e.target.checked }))}
+                                style={{ width: '18px', height: '18px', accentColor: 'var(--pink-dark)' }} />
+                              <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--brown)', flex: 1 }}>{c.name}</span>
+                              <span style={{ fontSize: '0.84rem', color: '#c0392b', fontWeight: 600 }}>+ EGP {displayPrice.toFixed(0)}</span>
+                            </label>
+                            {c.requiresText && boxModalCustomizations[c.name] && (
+                              <input type="text" placeholder="Enter text here..." 
+                                value={boxModalCustomizationTexts[c.name] || ''}
+                                onChange={e => setBoxModalCustomizationTexts(prev => ({ ...prev, [c.name]: e.target.value }))}
+                                style={{ marginLeft: '28px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--pink)', fontSize: '0.8rem', outline: 'none' }} />
+                            )}
                           </div>
                         );
                       })}

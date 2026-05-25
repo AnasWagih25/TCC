@@ -7,14 +7,14 @@ import { updateProfile } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase';
-import { useCart, Product, Order, Flavor, resolveImageUrl } from '@/context/CartContext';
+import { useCart, Product, Order, Flavor, resolveImageUrl, Category } from '@/context/CartContext';
 import { Cookie, TrendingUp, Package, Image as ImageIcon, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
-  const { products, heroImage, updateHeroImage, updateProduct, deleteProduct, addManualOrder: cartAddManualOrder, promoSettings, updatePromoSettings } = useCart();
+  const { products, heroImage, updateHeroImage, updateProduct, deleteProduct, addManualOrder: cartAddManualOrder, promoSettings, updatePromoSettings, categories, addCategory, updateCategory, deleteCategory } = useCart();
   const router = useRouter();
 
   // ── Direct Firestore orders (bypasses localStorage entirely) ──
@@ -122,12 +122,37 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({
     name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: '', flavor: ''
   });
-  const [productType, setProductType] = useState<'cake' | 'item' | 'cookie'>('cake');
+  const [productType, setProductType] = useState<string>('cake');
   const [flavors, setFlavors] = useState<Flavor[]>([]);
+  const [customizations, setCustomizations] = useState<{name: string, price: number, pricing?: Record<string, number>, requiresText?: boolean}[]>([]);
   const [boxPricing, setBoxPricing] = useState<{size: number, price: number}[]>([
     { size: 6, price: 250 },
     { size: 12, price: 450 }
   ]);
+
+  // Category Modal State
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryForm, setCategoryForm] = useState<Category>({ id: '', name: '', hasDescription: true, flavorType: 'none', sizeType: 'none', isBoxBuilder: false });
+
+  const selectedCat = categories.find(c => c.id === productType) || categories[0] || { id: '', name: '', hasDescription: true, flavorType: 'none', sizeType: 'none', isBoxBuilder: false };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const catToSave = { ...categoryForm, id: categoryForm.id || 'cat_' + Date.now() };
+      if (editingCategory) {
+        await updateCategory(catToSave);
+      } else {
+        await addCategory(catToSave);
+      }
+      setEditingCategory(null);
+      setCategoryForm({ id: '', name: '', hasDescription: true, flavorType: 'none', sizeType: 'none', isBoxBuilder: false });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save category');
+    }
+  };
 
   // Cropper State
   const [imageSrc, setImageSrc] = useState<string | null>(null);
@@ -245,8 +270,9 @@ export default function AdminDashboard() {
   const handleOpenAddModal = () => {
     setEditingProduct(null);
     setFormData({ name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: '', flavor: '' });
-    setProductType('cake');
+    setProductType(categories.length > 0 ? categories[0].id : 'cake');
     setFlavors([]);
+    setCustomizations([]);
     setBoxPricing([{ size: 6, price: 250 }, { size: 12, price: 450 }]);
     setIsModalOpen(true);
   };
@@ -264,6 +290,7 @@ export default function AdminDashboard() {
     });
     setProductType(p.type || 'cake');
     setFlavors(p.flavors || []);
+    setCustomizations(p.customizations || []);
     if (p.boxPricing) {
       setBoxPricing(p.boxPricing);
     } else if (p.boxSizes) {
@@ -276,9 +303,9 @@ export default function AdminDashboard() {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isItem = productType === 'item';
-    const isCookie = productType === 'cookie';
-    const productFlavors = isItem ? flavors.filter(f => f.name.trim()) : [];
+    const selectedCat = categories.find(c => c.id === productType) || categories[0];
+    
+    const productFlavors = selectedCat.flavorType === 'array' ? flavors.filter(f => f.name.trim()) : [];
     
     // Main image is always formData.image; flavor images are secondary
     const mainImage = formData.image || '';
@@ -287,18 +314,16 @@ export default function AdminDashboard() {
       ? [mainImage, ...flavorImages.filter(fi => fi !== mainImage)]
       : flavorImages;
 
-    const parsedBoxPricing = isItem ? boxPricing.filter(bp => bp.size > 0 && bp.price > 0).sort((a, b) => a.size - b.size) : [];
-    
-    // Also save boxSizes for backward compatibility if needed by old code
+    const parsedBoxPricing = selectedCat.sizeType === 'box_sizes' ? boxPricing.filter(bp => bp.size > 0 && bp.price > 0).sort((a, b) => a.size - b.size) : [];
     const parsedBoxSizes = parsedBoxPricing.map(bp => bp.size);
     
     const newProduct: Product = {
       id: editingProduct ? editingProduct.id : 'prod_' + Date.now(),
       name: formData.name,
-      description: isCookie ? (formData.flavor || '') : formData.description,
+      description: (selectedCat.flavorType === 'single' && !selectedCat.hasDescription) ? (formData.flavor || '') : formData.description,
       price: {
         normal: parseFloat(formData.priceNormal) || 0,
-        mini: isCookie ? 0 : (parseFloat(formData.priceMini) || 0)
+        mini: selectedCat.sizeType === 'normal_mini' ? (parseFloat(formData.priceMini) || 0) : 0
       },
       stock: parseInt(formData.stock, 10),
       image: mainImage || productImages[0] || '',
@@ -307,7 +332,8 @@ export default function AdminDashboard() {
       flavors: productFlavors.length > 0 ? productFlavors : [],
       boxSizes: parsedBoxSizes,
       boxPricing: parsedBoxPricing,
-      ...(isCookie ? { flavor: formData.flavor } : {}),
+      customizations: customizations.filter(c => c.name.trim()),
+      ...(selectedCat.flavorType === 'single' ? { flavor: formData.flavor } : {}),
     };
     
     try {
@@ -636,7 +662,12 @@ export default function AdminDashboard() {
                     <div key={p.id} className="admin-product-card">
                       <img src={resolveImageUrl(p.image)} alt={p.name} className="admin-product-img" />
                       <div className="admin-product-info">
-                        <h4>{p.name} <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '50px', background: p.type === 'item' ? 'rgba(99,61,45,0.1)' : p.type === 'cookie' ? 'rgba(210,150,80,0.15)' : 'var(--pink)', color: 'var(--brown)', fontWeight: 500, marginLeft: '6px', fontFamily: '"Inter", sans-serif' }}>{p.type === 'item' ? 'Item' : p.type === 'cookie' ? 'Cookie' : 'Cake'}</span></h4>
+                        <h4>
+                          {p.name} 
+                          <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '50px', background: 'var(--pink)', color: 'var(--brown)', fontWeight: 500, marginLeft: '6px', fontFamily: '"Inter", sans-serif' }}>
+                            {categories.find(c => c.id === p.type)?.name || p.type}
+                          </span>
+                        </h4>
                         {p.type === 'cookie' ? (
                           <div className="price">EGP {p.price.normal.toFixed(2)}{p.flavor ? ` · ${p.flavor}` : ''}</div>
                         ) : p.type === 'item' && p.flavors && p.flavors.length > 0 ? (
@@ -741,120 +772,129 @@ export default function AdminDashboard() {
                 <div className="form-section-title">Product Details</div>
                 {/* Product Type Selector */}
                 <div className="form-group">
-                  <label>Product Type *</label>
-                  <div style={{ display: 'flex', gap: '0', background: 'var(--off-white)', padding: '4px', borderRadius: '50px', marginTop: '6px' }}>
-                    <button type="button" onClick={() => { setProductType('cookie'); setFlavors([]); }}
-                      style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'cookie' ? 700 : 500, background: productType === 'cookie' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
-                      Cookie
-                    </button>
-                    <button type="button" onClick={() => { setProductType('cake'); setFlavors([]); }}
-                      style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'cake' ? 700 : 500, background: productType === 'cake' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
-                      Cookie Cake
-                    </button>
-                    <button type="button" onClick={() => { setProductType('item'); if (flavors.length === 0) setFlavors([{ name: '', image: '', price: 0 }]); }}
-                      style={{ flex: 1, padding: '10px', borderRadius: '50px', border: 'none', fontSize: '0.85rem', fontWeight: productType === 'item' ? 700 : 500, background: productType === 'item' ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
-                      Cookie Boxes
-                    </button>
+                  <label>Product Category *</label>
+                  <div style={{ display: 'flex', gap: '0', flexWrap: 'wrap', background: 'var(--off-white)', padding: '4px', borderRadius: '12px', marginTop: '6px' }}>
+                    {categories.map(cat => (
+                      <button key={cat.id} type="button" onClick={() => { 
+                          setProductType(cat.id); 
+                          if (cat.flavorType === 'none') setFlavors([]); 
+                          else if (cat.flavorType === 'array' && flavors.length === 0) setFlavors([{ name: '', image: '', price: 0 }]);
+                        }}
+                        style={{ flex: '1 1 auto', padding: '10px', borderRadius: '8px', border: 'none', fontSize: '0.85rem', fontWeight: productType === cat.id ? 700 : 500, background: productType === cat.id ? 'var(--pink)' : 'transparent', color: 'var(--brown)', cursor: 'pointer', transition: '0.2s' }}>
+                        {cat.name}
+                      </button>
+                    ))}
                   </div>
-                  <p className="form-hint">
-                    {productType === 'cookie' ? 'A simple cookie with a flavor and price.' : productType === 'cake' ? 'Cookie Cake with Normal & Mini sizes.' : 'Cookie Item with different flavors & per-flavor pricing.'}
-                  </p>
+                  <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="btn btn-sm" style={{ marginTop: '8px', fontSize: '0.75rem', background: 'transparent', color: 'var(--brown)', textDecoration: 'underline', padding: 0, border: 'none', cursor: 'pointer' }}>
+                    + Manage Categories
+                  </button>
                 </div>
                 <div className="form-group">
                   <label>Name *</label>
-                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder={productType === 'cookie' ? 'e.g. Chocolate Chip Cookie' : 'e.g. Classic Chocolate Chip'} />
+                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Classic Chocolate Chip" />
                 </div>
-                {productType === 'cookie' ? (
-                  <div className="form-group">
-                    <label>Flavor *</label>
-                    <input type="text" required value={formData.flavor} onChange={e => setFormData({...formData, flavor: e.target.value})} placeholder="e.g. Double Chocolate, Red Velvet" />
-                  </div>
-                ) : (
-                  <div className="form-group">
-                    <label>Description *</label>
-                    <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Brief description of the product" />
-                  </div>
-                )}
-                <div className="form-group" style={{ marginTop: '16px' }}>
-                  <label>Main Product Image</label>
-                  <p className="form-hint" style={{ marginBottom: '8px' }}>This image represents the product in the shop.</p>
-                  {formData.image && (
-                    <div style={{ marginBottom: '10px' }}>
-                      <img src={resolveImageUrl(formData.image)} alt="Preview" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--brown-light)' }} />
-                    </div>
-                  )}
-                  <button type="button" className="btn btn-sm btn-secondary" onClick={() => { setCropTarget('product'); document.getElementById('hiddenFileInput')?.click(); }}>
-                    Upload & Crop Image
-                  </button>
-                </div>
-              </div>
 
-              {productType === 'cookie' ? (
-                <div className="form-section">
-                  <div className="form-section-title">Pricing & Inventory</div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Price (EGP) *</label>
-                      <input type="number" required min="0.01" step="0.01" value={formData.priceNormal} onChange={e => setFormData({...formData, priceNormal: e.target.value})} />
-                    </div>
-                    <div className="form-group">
-                      <label>Stock Quantity *</label>
-                      <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
-                    </div>
-                  </div>
-                </div>
-              ) : productType === 'cake' ? (
-                <div className="form-section">
-                  <div className="form-section-title">Pricing & Inventory</div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Normal Price (EGP) *</label>
-                      <input type="number" required min="0.01" step="0.01" value={formData.priceNormal} onChange={e => setFormData({...formData, priceNormal: e.target.value})} />
-                    </div>
-                    <div className="form-group">
-                      <label>Mini Price (EGP) *</label>
-                      <input type="number" required min="0.01" step="0.01" value={formData.priceMini} onChange={e => setFormData({...formData, priceMini: e.target.value})} />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Stock Quantity *</label>
-                      <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="form-section">
-                    <div className="form-section-title">Box Sizes & Pricing</div>
-                    <div className="form-group">
-                      <label>Box Options</label>
-                      <p className="form-hint" style={{ marginBottom: '12px' }}>Define the sizes available and their base price.</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {boxPricing.map((bp, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                            <input type="number" placeholder="Size (e.g. 6)" value={bp.size || ''}
-                              onChange={e => { const u = [...boxPricing]; u[idx] = { ...u[idx], size: parseInt(e.target.value) || 0 }; setBoxPricing(u); }}
-                              style={{ flex: 1 }} />
-                            <input type="number" placeholder="Price (EGP)" value={bp.price || ''}
-                              onChange={e => { const u = [...boxPricing]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setBoxPricing(u); }}
-                              style={{ flex: 1 }} />
-                            <button type="button" onClick={() => setBoxPricing(boxPricing.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px' }}>
-                              <Trash2 size={16} />
-                            </button>
+                {selectedCat.flavorType === 'single' && (
+                        <div className="form-group">
+                          <label>Flavor *</label>
+                          <input type="text" required value={formData.flavor} onChange={e => setFormData({...formData, flavor: e.target.value})} placeholder="e.g. Double Chocolate, Red Velvet" />
+                        </div>
+                      )}
+                      {selectedCat.hasDescription && (
+                        <div className="form-group">
+                          <label>Description *</label>
+                          <textarea required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Brief description of the product" />
+                        </div>
+                      )}
+                      
+                      <div className="form-group" style={{ marginTop: '16px' }}>
+                        <label>Main Product Image</label>
+                        <p className="form-hint" style={{ marginBottom: '8px' }}>This image represents the product in the shop.</p>
+                        {formData.image && (
+                          <div style={{ marginBottom: '10px' }}>
+                            <img src={resolveImageUrl(formData.image)} alt="Preview" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--brown-light)' }} />
                           </div>
-                        ))}
-                        <button type="button" onClick={() => setBoxPricing([...boxPricing, { size: 0, price: 0 }])}
-                          className="btn btn-sm btn-secondary" style={{ alignSelf: 'flex-start', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Plus size={14} /> Add Box Option
+                        )}
+                        <button type="button" className="btn btn-sm btn-secondary" onClick={() => { setCropTarget('product'); document.getElementById('hiddenFileInput')?.click(); }}>
+                          Upload & Crop Image
                         </button>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="form-section">
-                    <div className="form-section-title">Flavors Inventory</div>
-                    <div className="form-row">
+                    <div className="form-section">
+                      <div className="form-section-title">Pricing & Inventory</div>
+                      {selectedCat.sizeType === 'none' && (
+                        <div className="form-row">
+                          <div className="form-group">
+                            <label>Price (EGP) *</label>
+                            <input type="number" required min="0.01" step="0.01" value={formData.priceNormal} onChange={e => setFormData({...formData, priceNormal: e.target.value})} />
+                          </div>
+                          <div className="form-group">
+                            <label>Stock Quantity *</label>
+                            <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                          </div>
+                        </div>
+                      )}
+                      {selectedCat.sizeType === 'normal_mini' && (
+                        <>
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label>Normal Price (EGP) *</label>
+                              <input type="number" required min="0.01" step="0.01" value={formData.priceNormal} onChange={e => setFormData({...formData, priceNormal: e.target.value})} />
+                            </div>
+                            <div className="form-group">
+                              <label>Mini Price (EGP) *</label>
+                              <input type="number" required min="0.01" step="0.01" value={formData.priceMini} onChange={e => setFormData({...formData, priceMini: e.target.value})} />
+                            </div>
+                          </div>
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label>Stock Quantity *</label>
+                              <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      {selectedCat.sizeType === 'box_sizes' && (
+                        <>
+                          <div className="form-group">
+                            <label>Box Options</label>
+                            <p className="form-hint" style={{ marginBottom: '12px' }}>Define the sizes available and their base price.</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              {boxPricing.map((bp, idx) => (
+                                <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                  <input type="number" placeholder="Size (e.g. 6)" value={bp.size || ''}
+                                    onChange={e => { const u = [...boxPricing]; u[idx] = { ...u[idx], size: parseInt(e.target.value) || 0 }; setBoxPricing(u); }}
+                                    style={{ flex: 1 }} />
+                                  <input type="number" placeholder="Price (EGP)" value={bp.price || ''}
+                                    onChange={e => { const u = [...boxPricing]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setBoxPricing(u); }}
+                                    style={{ flex: 1 }} />
+                                  <button type="button" onClick={() => setBoxPricing(boxPricing.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px' }}>
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              ))}
+                              <button type="button" onClick={() => setBoxPricing([...boxPricing, { size: 0, price: 0 }])}
+                                className="btn btn-sm btn-secondary" style={{ alignSelf: 'flex-start', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Plus size={14} /> Add Box Option
+                              </button>
+                            </div>
+                          </div>
+                          <div className="form-row" style={{ marginTop: '16px' }}>
+                            <div className="form-group">
+                              <label>Global Stock Quantity *</label>
+                              <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+                              <p className="form-hint">Total number of boxes available.</p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {selectedCat.flavorType === 'array' && (
+                      <div className="form-section">
+                        <div className="form-section-title">Flavors Inventory</div>
+                        <div className="form-row">
                       <div className="form-group">
                         <label>Global Stock Quantity *</label>
                         <input type="number" required min="0" step="1" value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
@@ -901,8 +941,96 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   </div>
-                </>
-              )}
+                )}
+
+              <div className="form-section">
+                <div className="form-section-title">Customizations (Extra Charges)</div>
+                <div className="form-group">
+                  <label>Extra Options</label>
+                  <p className="form-hint" style={{ marginBottom: '12px' }}>Allow customers to add extra options (e.g. Extra Chocolate for +50 EGP).</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {customizations.map((cust, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                          <input type="text" placeholder="Option Name" value={cust.name}
+                            onChange={e => { const u = [...customizations]; u[idx] = { ...u[idx], name: e.target.value }; setCustomizations(u); }}
+                            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.85rem' }} />
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--brown-light)', cursor: 'pointer' }}>
+                            <input type="checkbox" checked={!!cust.requiresText}
+                              onChange={e => { const u = [...customizations]; u[idx] = { ...u[idx], requiresText: e.target.checked }; setCustomizations(u); }}
+                              style={{ accentColor: 'var(--pink-dark)' }} />
+                            Requires text input from customer?
+                          </label>
+                        </div>
+                        
+                        {(() => {
+                          if (selectedCat.sizeType === 'none') {
+                            return (
+                              <>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--brown-light)' }}>+ EGP</span>
+                                <input type="number" placeholder="Price" min="0" step="0.01" value={cust.price === 0 ? '' : cust.price}
+                                  onChange={e => { const u = [...customizations]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setCustomizations(u); }}
+                                  style={{ width: '80px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.85rem' }} />
+                              </>
+                            );
+                          } else if (selectedCat.sizeType === 'normal_mini') {
+                            return (
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--brown-light)' }}>Normal +EGP</span>
+                                  <input type="number" placeholder="Price" min="0" step="0.01" value={cust.pricing?.['Normal'] || ''}
+                                    onChange={e => { 
+                                      const u = [...customizations]; 
+                                      u[idx] = { ...u[idx], pricing: { ...(u[idx].pricing || {}), 'Normal': parseFloat(e.target.value) || 0 } }; 
+                                      setCustomizations(u); 
+                                    }}
+                                    style={{ width: '60px', padding: '8px 6px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.85rem' }} />
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--brown-light)' }}>Mini +EGP</span>
+                                  <input type="number" placeholder="Price" min="0" step="0.01" value={cust.pricing?.['Mini'] || ''}
+                                    onChange={e => { 
+                                      const u = [...customizations]; 
+                                      u[idx] = { ...u[idx], pricing: { ...(u[idx].pricing || {}), 'Mini': parseFloat(e.target.value) || 0 } }; 
+                                      setCustomizations(u); 
+                                    }}
+                                    style={{ width: '60px', padding: '8px 6px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.85rem' }} />
+                                </div>
+                              </div>
+                            );
+                          } else if (selectedCat.sizeType === 'box_sizes') {
+                            return (
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {boxPricing.filter(bp => bp.size > 0).map(bp => (
+                                  <div key={bp.size} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--brown-light)' }}>Box of {bp.size} +EGP</span>
+                                    <input type="number" placeholder="Price" min="0" step="0.01" value={cust.pricing?.[bp.size.toString()] || ''}
+                                      onChange={e => { 
+                                        const u = [...customizations]; 
+                                        u[idx] = { ...u[idx], pricing: { ...(u[idx].pricing || {}), [bp.size.toString()]: parseFloat(e.target.value) || 0 } }; 
+                                        setCustomizations(u); 
+                                      }}
+                                      style={{ width: '60px', padding: '8px 6px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.85rem' }} />
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                        })()}
+
+                        <button type="button" onClick={() => setCustomizations(customizations.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px' }}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setCustomizations([...customizations, { name: '', price: 0 }])}
+                      className="btn btn-sm btn-secondary" style={{ alignSelf: 'flex-start', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Plus size={14} /> Add Customization
+                    </button>
+                  </div>
+                </div>
+              </div>
+
             </div>
             
             <div className="modal-footer">
@@ -992,6 +1120,98 @@ export default function AdminDashboard() {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      {/* Category Management Modal */}
+      <div className={`modal-overlay ${isCategoryModalOpen ? 'active' : ''}`}>
+        <div className="modal" style={{ maxWidth: '600px' }}>
+          <div className="modal-header">
+            <button className="modal-close" onClick={() => { setIsCategoryModalOpen(false); setEditingCategory(null); }}>&times;</button>
+            <h2>{editingCategory ? 'Edit Category' : 'Manage Categories'}</h2>
+            <p className="modal-subtitle">Configure product types and their properties.</p>
+          </div>
+
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* List of categories */}
+            {!editingCategory && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: '1rem', color: 'var(--brown)', margin: 0 }}>Current Categories</h3>
+                  <button onClick={() => { setEditingCategory({ id: '', name: '', hasDescription: true, flavorType: 'none', sizeType: 'none', isBoxBuilder: false }); setCategoryForm({ id: '', name: '', hasDescription: true, flavorType: 'none', sizeType: 'none', isBoxBuilder: false }); }} className="btn btn-sm btn-secondary">
+                    + New Category
+                  </button>
+                </div>
+                <div style={{ background: 'var(--off-white)', borderRadius: '12px', padding: '12px' }}>
+                  {categories.map(cat => (
+                    <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(99,61,45,0.1)' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--brown)', fontSize: '0.9rem' }}>{cat.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--brown-light)' }}>
+                          Flavors: {cat.flavorType} | Sizes: {cat.sizeType}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => { setEditingCategory(cat); setCategoryForm(cat); }} style={{ background: 'none', border: 'none', color: 'var(--pink-dark)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}>Edit</button>
+                        {['cookie', 'cake', 'item'].includes(cat.id) ? (
+                          <span style={{ fontSize: '0.7rem', color: '#999' }}>Default</span>
+                        ) : (
+                          <button onClick={() => { if(confirm('Are you sure you want to delete this category?')) deleteCategory(cat.id); }} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}>Delete</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Edit Form */}
+            {editingCategory && (
+              <form onSubmit={handleSaveCategory} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="form-group">
+                  <label>Category Name *</label>
+                  <input type="text" required value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} placeholder="e.g. Brownies" />
+                </div>
+                
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
+                    <input type="checkbox" checked={categoryForm.hasDescription} onChange={e => setCategoryForm({...categoryForm, hasDescription: e.target.checked})} style={{ width: 'auto' }} />
+                    Needs Description Field
+                  </label>
+                </div>
+
+                <div className="form-group">
+                  <label>Flavors Handling</label>
+                  <select value={categoryForm.flavorType} onChange={e => setCategoryForm({...categoryForm, flavorType: e.target.value as any})}>
+                    <option value="none">No Flavors</option>
+                    <option value="single">Single text input (like standard Cookies)</option>
+                    <option value="array">Multiple Flavors with images & surcharges</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Sizes Handling</label>
+                  <select value={categoryForm.sizeType} onChange={e => setCategoryForm({...categoryForm, sizeType: e.target.value as any})}>
+                    <option value="none">Fixed Price (No sizes)</option>
+                    <option value="normal_mini">Two Sizes (Normal & Mini)</option>
+                    <option value="box_sizes">Multiple custom Box sizes & prices</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 500 }}>
+                    <input type="checkbox" checked={categoryForm.isBoxBuilder} onChange={e => setCategoryForm({...categoryForm, isBoxBuilder: e.target.checked})} style={{ width: 'auto' }} />
+                    Use "Box Builder" UI (Requires picking exactly X flavors to match Box Size)
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Category</button>
+                  <button type="button" onClick={() => setEditingCategory(null)} className="btn btn-secondary" style={{ flex: 1 }}>Cancel</button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       </div>
       {/* Cropper Modal — z-index must be above everything else */}
