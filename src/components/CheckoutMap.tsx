@@ -73,6 +73,7 @@ function LocationMarker({ onLocationSelect, searchTarget }: { onLocationSelect?:
 }
 
 export default function CheckoutMap({ onLocationSelect, staticLocation, isStatic = false }: MapProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const defaultCenter: [number, number] = isStatic && staticLocation ? [staticLocation.lat, staticLocation.lng] : [30.0444, 31.2357];
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -81,6 +82,10 @@ export default function CheckoutMap({ onLocationSelect, staticLocation, isStatic
   const [searchTarget, setSearchTarget] = useState<L.LatLng | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -133,6 +138,14 @@ export default function CheckoutMap({ onLocationSelect, staticLocation, isStatic
     setResults([]);
     setShowResults(false);
   };
+
+  if (!isMounted) {
+    return (
+      <div style={{ height: '300px', width: '100%', borderRadius: '12px', background: '#3B2116', border: '1.5px solid var(--pink)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontSize: '0.9rem' }}>
+        Loading map...
+      </div>
+    );
+  }
 
   return (
     <div ref={wrapperRef} style={{ width: '100%' }}>
@@ -228,7 +241,7 @@ export default function CheckoutMap({ onLocationSelect, staticLocation, isStatic
 
       {/* Map */}
       <div style={{ height: '300px', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '1.5px solid var(--pink)', zIndex: 10 }}>
-        <MapContainer center={defaultCenter} zoom={isStatic ? 14 : 11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', zIndex: 1 }}>
+        <MapContainer key={`leaflet-map-${defaultCenter[0]}-${defaultCenter[1]}-${isStatic ? 'static' : 'dynamic'}`} center={defaultCenter} zoom={isStatic ? 14 : 11} scrollWheelZoom={true} style={{ height: '100%', width: '100%', zIndex: 1 }}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

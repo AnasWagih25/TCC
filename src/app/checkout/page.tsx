@@ -100,8 +100,8 @@ export default function CheckoutPage() {
     }
   };
 
-  const finalDeliveryFee = deliveryMethod === 'pickup' ? 0 : deliveryFee;
-  const total = Math.max(0, subtotal + finalDeliveryFee - appliedDiscount);
+  const finalDeliveryFee = 0;
+  const total = Math.max(0, subtotal - appliedDiscount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -464,9 +464,13 @@ export default function CheckoutPage() {
                 {deliveryMethod === 'pickup' ? (
                   <strong style={{ color: '#2ecc71' }}>FREE Pickup (0 EGP)</strong>
                 ) : location ? (
-                  isDeliverable ? `EGP ${deliveryFee.toFixed(2)}` : <span style={{ color: '#ffaaaa' }}>Unavailable</span>
+                  isDeliverable ? (
+                    <strong style={{ color: 'var(--pink)' }}>To Be Determined (Uber Fare)</strong>
+                  ) : (
+                    <span style={{ color: '#ffaaaa' }}>Unavailable Location</span>
+                  )
                 ) : (
-                  <span style={{ fontSize: '0.8rem', fontStyle: 'italic', opacity: 0.8 }}>Pending Location Pin</span>
+                  <span style={{ fontSize: '0.88rem', color: 'var(--pink-light)', fontStyle: 'italic' }}>To Be Determined (Pin Map)</span>
                 )}
               </span>
             </div>

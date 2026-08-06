@@ -118,6 +118,24 @@ export function parseGoogleMapsUrl(inputUrl: string): { lat: number; lng: number
   return { lat, lng, mapUrl };
 }
 
+export function cleanForFirestore(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanForFirestore(item)).filter(item => item !== undefined);
+  }
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        cleaned[key] = cleanForFirestore(val);
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 export const defaultPickupSettings: PickupSettings = {
   address: 'The Cookie Concept Bakery Branch, New Cairo, Cairo, Egypt',
   lat: 30.0444,
@@ -488,7 +506,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     // Save order to Firestore
     try {
-      await setDoc(doc(db, 'orders', orderId), newOrder);
+      const sanitizedOrder = cleanForFirestore(newOrder);
+      await setDoc(doc(db, 'orders', orderId), sanitizedOrder);
 
       // Update Stock
       const updatedProducts = [...products];
@@ -512,7 +531,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateProduct = async (product: Product) => {
-    await setDoc(doc(db, 'products', product.id), product);
+    await setDoc(doc(db, 'products', product.id), cleanForFirestore(product));
     setProducts(prev => {
       const index = prev.findIndex(p => p.id === product.id);
       if (index >= 0) {
@@ -539,7 +558,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updatePromoSettings = async (promo: PromoCode) => {
-    await setDoc(doc(db, 'settings', 'promo'), promo);
+    await setDoc(doc(db, 'settings', 'promo'), cleanForFirestore(promo));
     setPromoSettings(promo);
   };
 
@@ -548,7 +567,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     newOrders[index].status = 'fulfilled';
     setOrders(newOrders);
     // Sync to Firestore
-    setDoc(doc(db, 'orders', newOrders[index].id), newOrders[index]).catch(console.error);
+    setDoc(doc(db, 'orders', newOrders[index].id), cleanForFirestore(newOrders[index])).catch(console.error);
   };
 
   const addManualOrder = (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => {
@@ -584,7 +603,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Save to Firestore
-    setDoc(doc(db, 'orders', orderId), manualOrder).catch(console.error);
+    setDoc(doc(db, 'orders', orderId), cleanForFirestore(manualOrder)).catch(console.error);
 
     setOrders([manualOrder, ...orders]);
     return orderId;
@@ -597,18 +616,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updatePickupSettings = async (settings: PickupSettings) => {
-    await setDoc(doc(db, 'settings', 'pickup'), settings);
+    await setDoc(doc(db, 'settings', 'pickup'), cleanForFirestore(settings));
     setPickupSettings(settings);
     try { localStorage.setItem('tcc_pickup_settings', JSON.stringify(settings)); } catch (e) {}
   };
 
   const addCategory = async (category: Category) => {
-    await setDoc(doc(db, 'categories', category.id), category);
+    await setDoc(doc(db, 'categories', category.id), cleanForFirestore(category));
     setCategories(prev => [...prev, category]);
   };
 
   const updateCategory = async (category: Category) => {
-    await setDoc(doc(db, 'categories', category.id), category);
+    await setDoc(doc(db, 'categories', category.id), cleanForFirestore(category));
     setCategories(prev => prev.map(c => c.id === category.id ? category : c));
   };
 
