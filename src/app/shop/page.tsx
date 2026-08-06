@@ -8,7 +8,7 @@ import { useCart, resolveImageUrl, type BoxFlavorSelection, type Product } from 
 import ProductImageSlider from '@/components/ProductImageSlider';
 
 export default function Shop() {
-  const { products, addToCart, addBoxToCart, categories } = useCart();
+  const { products, addToCart, addBoxToCart, categories, orders } = useCart();
   const [selectedSizes, setSelectedSizes] = useState<Record<string, 'Normal' | 'Mini'>>({});
 
   // Product detail modal state
@@ -173,6 +173,18 @@ export default function Shop() {
                 const isBoxProduct = cat?.isBoxBuilder;
                 const isCk = cat?.flavorType === 'single';
 
+                // Calculate product sales to determine automatic best seller per category
+                const salesCount = orders.reduce((sum, ord) => sum + (ord.items?.filter(it => it.id === p.id).reduce((s, it) => s + it.quantity, 0) || 0), 0);
+                const isTopSeller = salesCount > 0 && products
+                  .filter(other => (other.type || categories[0]?.id) === (p.type || categories[0]?.id))
+                  .every(other => {
+                    const otherSales = orders.reduce((sum, ord) => sum + (ord.items?.filter(it => it.id === other.id).reduce((s, it) => s + it.quantity, 0) || 0), 0);
+                    return salesCount >= otherSales;
+                  });
+
+                const isHiddenBadge = p.badge === 'NONE' || p.badge === 'none';
+                const displayBadge = isHiddenBadge ? null : (p.badge || (isTopSeller ? 'BEST SELLER' : null));
+
                 let displayPrice = '';
                 if (isBoxProduct) {
                   const boxOpts = p.boxPricing && p.boxPricing.length > 0 ? p.boxPricing : (p.boxSizes || []).map(s => ({ size: s, price: 0 }));
@@ -191,6 +203,16 @@ export default function Shop() {
                         <span className="product-stock-badge stock-low">Only {p.stock} left</span>
                       ) : (
                         <span className="product-stock-badge stock-in">In Stock</span>
+                      )}
+
+                      {displayBadge && (
+                        <span className={`product-tag-badge ${
+                          displayBadge.toUpperCase().includes('BEST') ? 'badge-bestseller' :
+                          displayBadge.toUpperCase().includes('NEW') ? 'badge-new' :
+                          displayBadge.toUpperCase().includes('LIMITED') ? 'badge-limited' : 'badge-default'
+                        }`}>
+                          {displayBadge}
+                        </span>
                       )}
                       <div style={{ padding: '1rem', height: '100%' }}>
                         <ProductImageSlider images={p.images || [p.image]} alt={p.name} />

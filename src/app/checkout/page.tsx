@@ -145,9 +145,40 @@ export default function CheckoutPage() {
 
   if (cart.length === 0) {
     return (
-      <div className="page active" style={{ paddingTop: '120px', minHeight: '100vh', textAlign: 'center' }}>
-        <h2>Your cart is empty</h2>
-        <button className="btn btn-primary" style={{ marginTop: '20px' }} onClick={() => router.push('/shop')}>Go to Shop</button>
+      <div className="page active polka-bg" style={{ paddingTop: '140px', paddingBottom: '80px', minHeight: '85vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="section-container" style={{
+          maxWidth: '600px',
+          margin: '0 auto',
+          background: 'var(--card-brown)',
+          padding: '48px 32px',
+          borderRadius: '24px',
+          border: '2px solid var(--pink)',
+          boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)',
+          textAlign: 'center',
+          color: '#FFFFFF'
+        }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'var(--pink)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px',
+            color: 'var(--brown)',
+            boxShadow: '0 8px 20px rgba(243, 195, 206, 0.3)'
+          }}>
+            <ShoppingCart size={44} color="var(--brown)" strokeWidth={2} />
+          </div>
+          <h2 style={{ fontSize: '2rem', marginBottom: '10px', color: '#FFFFFF', fontWeight: 700 }}>Your cart is empty</h2>
+          <p style={{ fontSize: '1.05rem', color: 'var(--pink-light)', marginBottom: '28px', lineHeight: 1.5 }}>
+            Looks like you haven't added any delicious concepts yet.
+          </p>
+          <button className="btn btn-primary" style={{ padding: '14px 32px', fontSize: '1rem', fontWeight: 700 }} onClick={() => router.push('/shop')}>
+            Go to Shop 🛒
+          </button>
+        </div>
       </div>
     );
   }

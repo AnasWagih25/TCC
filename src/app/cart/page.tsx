@@ -17,19 +17,46 @@ export default function Cart() {
 
   return (
     <div className="page active" id="cartPage">
-      <div className="cart-page polka-bg-light">
+      <div className="cart-page polka-bg" style={{ minHeight: '85vh', paddingBottom: '80px' }}>
         <div className="section-container">
-          <div className="section-header">
-            <h2 className="section-title">Your Cart</h2>
+          <div className="section-header" style={{ marginBottom: '32px' }}>
+            <h2 className="section-title" style={{ color: '#FFFFFF' }}>Your Cart</h2>
           </div>
 
           <div id="cartContent">
             {cart.length === 0 ? (
-              <div className="cart-empty">
-                <div className="empty-icon"><ShoppingCart size={64} color="var(--brown-light)" strokeWidth={1.5} /></div>
-                <h3>Your cart is empty</h3>
-                <p>Looks like you haven't added any delicious concepts yet.</p>
-                <Link href="/shop" className="btn btn-primary">Start Shopping</Link>
+              <div className="cart-empty" style={{
+                maxWidth: '600px',
+                margin: '0 auto',
+                background: 'var(--card-brown)',
+                padding: '48px 32px',
+                borderRadius: '24px',
+                border: '2px solid var(--pink)',
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)',
+                textAlign: 'center',
+                color: '#FFFFFF'
+              }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  background: 'var(--pink)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 20px',
+                  color: 'var(--brown)',
+                  boxShadow: '0 8px 20px rgba(243, 195, 206, 0.3)'
+                }}>
+                  <ShoppingCart size={44} color="var(--brown)" strokeWidth={2} />
+                </div>
+                <h3 style={{ fontSize: '2rem', marginBottom: '10px', color: '#FFFFFF', fontWeight: 700 }}>Your cart is empty</h3>
+                <p style={{ fontSize: '1.05rem', color: 'var(--pink-light)', marginBottom: '28px', lineHeight: 1.5 }}>
+                  Looks like you haven't added any delicious concepts yet.
+                </p>
+                <Link href="/shop" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: '1rem', fontWeight: 700 }}>
+                  Start Shopping 🛒
+                </Link>
               </div>
             ) : (
               <div className="cart-layout">

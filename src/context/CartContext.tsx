@@ -33,6 +33,7 @@ export type Product = {
   image: string;
   images?: string[];
   type?: string;
+  badge?: string;
   flavors?: Flavor[];
   boxSizes?: number[]; // Legacy, keeping for backwards compat if needed
   boxPricing?: { size: number; price: number }[];
@@ -181,6 +182,7 @@ type CartContextType = {
   cart: CartItem[];
   orders: Order[];
   heroImage: string;
+  heroRotationEnabled: boolean;
   addToCart: (productId: string, size: 'Normal' | 'Mini', flavorName?: string, selectedCustomizations?: { name: string; price: number; text?: string }[]) => { success: boolean; message: string };
   addBoxToCart: (productId: string, boxSize: number, selections: BoxFlavorSelection[], selectedCustomizations?: { name: string; price: number; text?: string }[]) => { success: boolean; message: string };
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
@@ -189,6 +191,7 @@ type CartContextType = {
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (index: number) => Promise<void>;
   updateHeroImage: (url: string) => Promise<void>;
+  updateHeroRotation: (enabled: boolean) => Promise<void>;
   markOrderFulfilled: (index: number) => void;
   addManualOrder: (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => string;
   deleteOrder: (orderId: string) => void;
@@ -209,6 +212,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [heroImage, setHeroImage] = useState<string>('/images/preview.png');
+  const [heroRotationEnabled, setHeroRotationEnabled] = useState<boolean>(true);
   const [promoSettings, setPromoSettings] = useState<PromoCode | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [pickupSettings, setPickupSettings] = useState<PickupSettings>(defaultPickupSettings);
@@ -281,10 +285,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // Fetch hero image from Firestore
         const heroSnap = await getDoc(doc(db, 'settings', 'homepage'));
         if (heroSnap.exists()) {
-          const heroUrl = heroSnap.data().heroImage;
-          setHeroImage(heroUrl);
+          const heroData = heroSnap.data();
+          if (heroData.heroImage) setHeroImage(heroData.heroImage);
+          if (heroData.heroRotationEnabled !== undefined) setHeroRotationEnabled(heroData.heroRotationEnabled);
           // Cache hero image in localStorage
-          try { localStorage.setItem('tcc_hero_image', heroUrl); } catch (e) {}
+          try { localStorage.setItem('tcc_hero_image', heroData.heroImage); } catch (e) {}
         }
 
         // Fetch promo settings
@@ -557,6 +562,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem('tcc_hero_image', url); } catch (e) {}
   };
 
+  const updateHeroRotation = async (enabled: boolean) => {
+    await setDoc(doc(db, 'settings', 'homepage'), { heroRotationEnabled: enabled }, { merge: true });
+    setHeroRotationEnabled(enabled);
+  };
+
   const updatePromoSettings = async (promo: PromoCode) => {
     await setDoc(doc(db, 'settings', 'promo'), cleanForFirestore(promo));
     setPromoSettings(promo);
@@ -640,9 +650,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider value={{
-      products, cart, orders, heroImage, promoSettings, categories, pickupSettings,
+      products, cart, orders, heroImage, heroRotationEnabled, promoSettings, categories, pickupSettings,
       addToCart, addBoxToCart, updateQuantity, removeFromCart, placeOrder,
-      updateProduct, deleteProduct, updateHeroImage, markOrderFulfilled, addManualOrder, deleteOrder, updatePromoSettings, updatePickupSettings,
+      updateProduct, deleteProduct, updateHeroImage, updateHeroRotation, markOrderFulfilled, addManualOrder, deleteOrder, updatePromoSettings, updatePickupSettings,
       addCategory, updateCategory, deleteCategory
     }}>
       {children}

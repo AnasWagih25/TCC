@@ -14,7 +14,7 @@ import getCroppedImg from '@/lib/cropImage';
 
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
-  const { products, heroImage, updateHeroImage, updateProduct, deleteProduct, addManualOrder: cartAddManualOrder, promoSettings, updatePromoSettings, pickupSettings, updatePickupSettings, categories, addCategory, updateCategory, deleteCategory } = useCart();
+  const { products, heroImage, heroRotationEnabled, updateHeroImage, updateHeroRotation, updateProduct, deleteProduct, addManualOrder: cartAddManualOrder, promoSettings, updatePromoSettings, pickupSettings, updatePickupSettings, categories, addCategory, updateCategory, deleteCategory } = useCart();
   const router = useRouter();
 
   // ── Direct Firestore orders (bypasses localStorage entirely) ──
@@ -94,6 +94,8 @@ export default function AdminDashboard() {
     isActive: false
   });
 
+  const [heroUrlInput, setHeroUrlInput] = useState('');
+
   const [pickupForm, setPickupForm] = useState({
     address: '',
     lat: 30.0444,
@@ -118,6 +120,12 @@ export default function AdminDashboard() {
       setPickupForm(pickupSettings);
     }
   }, [pickupSettings]);
+
+  useEffect(() => {
+    if (heroImage) {
+      setHeroUrlInput(heroImage);
+    }
+  }, [heroImage]);
 
   const handleSavePromo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,6 +158,7 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({
     name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: '', flavor: ''
   });
+  const [badge, setBadge] = useState<string>('');
   const [productType, setProductType] = useState<string>('cake');
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [customizations, setCustomizations] = useState<{name: string, price: number, pricing?: Record<string, number>, requiresText?: boolean}[]>([]);
@@ -298,6 +307,7 @@ export default function AdminDashboard() {
   const handleOpenAddModal = () => {
     setEditingProduct(null);
     setFormData({ name: '', description: '', priceNormal: '399', priceMini: '250', stock: '50', image: '', flavor: '' });
+    setBadge('');
     setProductType(categories.length > 0 ? categories[0].id : 'cake');
     setFlavors([]);
     setCustomizations([]);
@@ -316,6 +326,7 @@ export default function AdminDashboard() {
       image: p.image,
       flavor: p.flavor || ''
     });
+    setBadge(p.badge || '');
     setProductType(p.type || 'cake');
     setFlavors(p.flavors || []);
     setCustomizations(p.customizations || []);
@@ -357,6 +368,7 @@ export default function AdminDashboard() {
       image: mainImage || productImages[0] || '',
       images: productImages.length > 0 ? productImages : [],
       type: productType,
+      badge: badge.trim(),
       flavors: productFlavors.length > 0 ? productFlavors : [],
       boxSizes: parsedBoxSizes,
       boxPricing: parsedBoxPricing,
@@ -729,6 +741,117 @@ export default function AdminDashboard() {
               <div className="admin-toolbar">
                 <h3>Store Settings</h3>
               </div>
+
+              {/* Homepage Hero Image Configuration Card */}
+              <div className="admin-settings-section" style={{ marginBottom: '24px' }}>
+                <h4 style={{ marginBottom: '16px', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <ImageIcon size={22} color="var(--pink)" /> Homepage Hero Image
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--pink-light)', margin: 0, lineHeight: 1.5 }}>
+                    Upload, crop, or update the main hero cookie image displayed prominently on your homepage.
+                  </p>
+
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '20px',
+                    background: 'rgba(0,0,0,0.25)',
+                    padding: '20px',
+                    borderRadius: '16px',
+                    border: '1.5px solid rgba(243,195,206,0.3)',
+                    flexWrap: 'wrap'
+                  }}>
+                    <img
+                      src={resolveImageUrl(heroImage)}
+                      alt="Current Hero Cookie"
+                      style={{
+                        width: '120px',
+                        height: '120px',
+                        objectFit: 'cover',
+                        borderRadius: '16px',
+                        border: '2.5px solid var(--pink)',
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                        flexShrink: 0
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: '240px' }}>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>
+                        Current Active Hero Image
+                      </div>
+                      <label 
+                        className="btn btn-primary" 
+                        style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', fontSize: '0.9rem', fontWeight: 700 }}
+                      >
+                        <ImageIcon size={18} /> Upload & Crop New Image
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={e => {
+                            setCropTarget('hero');
+                            onFileChange(e);
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '8px' }}>
+                    <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px' }}>
+                      Or paste image URL directly:
+                    </label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <input
+                        type="text"
+                        placeholder="e.g. https://... or /images/hero.png"
+                        value={heroUrlInput}
+                        onChange={e => setHeroUrlInput(e.target.value)}
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#3B2116', color: '#FFFFFF', fontSize: '0.88rem' }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ padding: '10px 20px', fontWeight: 700 }}
+                        onClick={async () => {
+                          if (!heroUrlInput.trim()) return;
+                          await updateHeroImage(heroUrlInput.trim());
+                          alert('Hero image updated successfully!');
+                        }}
+                      >
+                        Save URL
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 360 Rotation Toggle Control */}
+                  <div style={{ marginTop: '12px', paddingTop: '16px', borderTop: '1px solid rgba(243,195,206,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <RefreshCw size={18} color="var(--pink)" className={heroRotationEnabled ? 'rotate-360-slow' : ''} />
+                        Slow 360° Rotation Animation Effect
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--pink-light)', marginTop: '3px' }}>
+                        Enable or disable smooth 360-degree continuous rotation for your homepage hero cookie.
+                      </div>
+                    </div>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: 'pointer', background: 'rgba(0,0,0,0.3)', padding: '8px 18px', borderRadius: '50px', border: `1.5px solid ${heroRotationEnabled ? 'var(--pink)' : 'rgba(255,255,255,0.2)'}` }}>
+                      <input
+                        type="checkbox"
+                        checked={heroRotationEnabled}
+                        onChange={async e => {
+                          await updateHeroRotation(e.target.checked);
+                        }}
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--pink)', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: heroRotationEnabled ? '#2ecc71' : '#aaaaaa' }}>
+                        {heroRotationEnabled ? 'Rotation Active' : 'Disabled'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
               <div className="admin-settings-section">
                 <h4 style={{ marginBottom: '16px', color: '#FFFFFF' }}>Promo Code Configuration</h4>
                 <form onSubmit={handleSavePromo}>
@@ -869,6 +992,34 @@ export default function AdminDashboard() {
                 <div className="form-group">
                   <label>Name *</label>
                   <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. Classic Chocolate Chip" />
+                </div>
+                {/* Product Badge / Tag */}
+                <div className="form-group">
+                  <label>Product Tag / Badge (e.g. NEW!, BEST SELLER)</label>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <select
+                      value={['', 'NONE', 'BEST SELLER', 'NEW!', 'POPULAR', 'LIMITED'].includes(badge) ? badge : 'custom'}
+                      onChange={e => {
+                        if (e.target.value !== 'custom') setBadge(e.target.value);
+                      }}
+                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#3B2116', color: '#FFFFFF', fontSize: '0.88rem' }}
+                    >
+                      <option value="">Auto (Best Seller based on sales)</option>
+                      <option value="NONE">None (Hide Badge)</option>
+                      <option value="BEST SELLER">BEST SELLER</option>
+                      <option value="NEW!">NEW!</option>
+                      <option value="POPULAR">POPULAR</option>
+                      <option value="LIMITED">LIMITED</option>
+                      <option value="custom">Custom Tag...</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="e.g. NEW!, HOT, SPECIAL"
+                      value={badge}
+                      onChange={e => setBadge(e.target.value)}
+                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#3B2116', color: '#FFFFFF', fontSize: '0.88rem' }}
+                    />
+                  </div>
                 </div>
 
                 {selectedCat.flavorType === 'single' && (

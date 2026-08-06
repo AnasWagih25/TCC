@@ -62,6 +62,9 @@ export default async function getCroppedImg(
   canvas.width = bBoxWidth
   canvas.height = bBoxHeight
 
+  // Clear bounding canvas context to preserve transparency
+  ctx.clearRect(0, 0, bBoxWidth, bBoxHeight)
+
   // translate canvas context to a central location to allow rotating and flipping around the center
   ctx.translate(bBoxWidth / 2, bBoxHeight / 2)
   ctx.rotate(rotRad)
@@ -79,12 +82,19 @@ export default async function getCroppedImg(
     throw new Error('No 2d context')
   }
 
-  // Set the size of the cropped canvas to a fixed size to prevent huge base64 strings
-  const TARGET_SIZE = 600;
-  croppedCanvas.width = TARGET_SIZE;
-  croppedCanvas.height = TARGET_SIZE;
+  // Set the size of the cropped canvas to full crisp HD resolution
+  const targetWidth = Math.max(pixelCrop.width, 1600);
+  const targetHeight = Math.round(Math.max(pixelCrop.height, 1600 * (pixelCrop.height / (pixelCrop.width || 1))));
 
-  // Draw the cropped image onto the new canvas
+  croppedCanvas.width = targetWidth;
+  croppedCanvas.height = targetHeight;
+
+  // Clear cropped canvas context to preserve 100% alpha transparency & set HD smoothing
+  croppedCtx.clearRect(0, 0, targetWidth, targetHeight);
+  croppedCtx.imageSmoothingEnabled = true;
+  croppedCtx.imageSmoothingQuality = 'high';
+
+  // Draw the cropped image onto the HD canvas
   croppedCtx.drawImage(
     canvas,
     pixelCrop.x,
@@ -93,10 +103,10 @@ export default async function getCroppedImg(
     pixelCrop.height,
     0,
     0,
-    TARGET_SIZE,
-    TARGET_SIZE
+    targetWidth,
+    targetHeight
   )
 
-  // As Base64 string, lower quality slightly to ensure it fits in localStorage comfortably
-  return croppedCanvas.toDataURL('image/jpeg', 0.8); // using jpeg to save space
+  // Return PNG data URL to preserve alpha channel transparency (prevents black background fills)
+  return croppedCanvas.toDataURL('image/png');
 }

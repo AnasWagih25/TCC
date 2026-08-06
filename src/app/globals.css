@@ -485,7 +485,7 @@ select {
 
 .hero-cookie-premium {
   position: relative;
-  width: min(440px, 100%);
+  width: min(484px, 100%);
   max-width: 100%;
   height: auto;
   z-index: 2;
@@ -657,14 +657,16 @@ select {
 
 .product-stock-badge {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 4px 12px;
+  top: 10px;
+  left: 10px;
+  right: auto;
+  padding: 4px 10px;
   border-radius: 50px;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  z-index: 15;
 }
 
 .stock-in {

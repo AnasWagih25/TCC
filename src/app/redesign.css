@@ -385,11 +385,15 @@ body, .page, .hero, .about, .featured, .shop-page, .cart-page, .admin-page, .adm
   font-family: var(--font-fredoka) !important;
 }
 
-/* Stock Badges */
+/* Stock Badges (Top Left) */
 .product-stock-badge {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
   font-size: 0.68rem !important;
-  padding: 5px 12px !important;
-  z-index: 20 !important;
+  padding: 4px 10px !important;
+  z-index: 15 !important;
   border-radius: 50px !important;
   font-weight: 700 !important;
   letter-spacing: 0.5px;
@@ -914,4 +918,290 @@ body, .page, .hero, .about, .featured, .shop-page, .cart-page, .admin-page, .adm
   font-family: var(--font-fredoka), sans-serif !important;
   font-size: 1.3rem !important;
   color: #FFFFFF !important;
+}
+
+/* 360° Slow Rotating Hero Cookie Effect */
+@keyframes rotate360Slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rotate-360-slow,
+.hero-cookie-premium.rotate-360-slow {
+  animation: rotate360Slow 30s linear infinite !important;
+}
+
+/* Stock Badges (Top Left - Green for In Stock, Red for Sold Out) */
+.product-stock-badge {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  right: auto !important;
+  font-size: 0.68rem !important;
+  padding: 4px 10px !important;
+  z-index: 15 !important;
+  border-radius: 50px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+}
+
+.stock-in {
+  background: rgba(46, 204, 113, 0.9) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #2ecc71 !important;
+  box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3) !important;
+}
+
+.stock-low {
+  background: rgba(230, 126, 34, 0.9) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #f39c12 !important;
+  box-shadow: 0 2px 8px rgba(230, 126, 34, 0.3) !important;
+}
+
+.stock-out {
+  background: rgba(231, 76, 60, 0.92) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #e74c3c !important;
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3) !important;
+}
+
+/* ================================================
+   SHOP ITEM PRODUCT BADGES & TAGS (Hotpink Theme)
+   ================================================ */
+.product-tag-badge {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  padding: 4px 11px !important;
+  border-radius: 50px !important;
+  font-family: var(--font-fredoka), sans-serif !important;
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  z-index: 15 !important;
+  background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #FFB6C1 !important;
+  box-shadow: 0 4px 14px rgba(255, 20, 147, 0.4) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.badge-bestseller,
+.badge-new,
+.badge-limited,
+.badge-default {
+  background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%) !important;
+  color: #FFFFFF !important;
+  border: 1px solid #FFB6C1 !important;
+  box-shadow: 0 4px 14px rgba(255, 20, 147, 0.4) !important;
+}
+
+/* ================================================
+   MOBILE / iOS / ANDROID WEBVIEW RESPONSIVE OVERRIDES
+   (Strictly scoped to max-width: 768px - Desktop is 100% untouched)
+   ================================================ */
+@media screen and (max-width: 768px) {
+  /* Prevent horizontal overflow wobble on mobile WebViews */
+  html, body {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    -webkit-text-size-adjust: 100% !important;
+    touch-action: manipulation;
+  }
+
+  /* Safe Area Insets for iOS WebViews with Notches / Home Indicator */
+  .header {
+    padding-top: max(10px, env(safe-area-inset-top)) !important;
+    padding-left: max(16px, env(safe-area-inset-left)) !important;
+    padding-right: max(16px, env(safe-area-inset-right)) !important;
+    height: auto !important;
+    min-height: 64px !important;
+  }
+
+  /* Fixed pages top padding to prevent content clipping under fixed header */
+  .page {
+    padding-top: calc(85px + env(safe-area-inset-top)) !important;
+    padding-bottom: calc(40px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Navbar Logo & Action Items */
+  .header-logo img,
+  .logo img {
+    max-height: 40px !important;
+    width: auto !important;
+  }
+
+  .nav-center .logo-text {
+    font-size: 1.1rem !important;
+  }
+
+  /* Hero Section scaling for mobile */
+  .hero {
+    padding-top: calc(90px + env(safe-area-inset-top)) !important;
+    padding-bottom: 40px !important;
+    min-height: auto !important;
+  }
+
+  .hero-container {
+    padding: 0 16px !important;
+    gap: 20px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(2.2rem, 9vw, 3.4rem) !important;
+    line-height: 1.05 !important;
+  }
+
+  .hero-subtitle {
+    font-size: 0.95rem !important;
+    line-height: 1.45 !important;
+    margin: 14px auto 24px !important;
+    max-width: 100% !important;
+  }
+
+  .hero-cookie-premium {
+    width: min(286px, 75vw) !important;
+    height: auto !important;
+    margin: 0 auto !important;
+  }
+
+  .sticker {
+    width: 80px !important;
+    height: 80px !important;
+    font-size: 0.75rem !important;
+    bottom: 5% !important;
+    right: 8% !important;
+  }
+
+  /* Section Containers & Headers */
+  .section-container {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  .section-title {
+    font-size: 1.8rem !important;
+  }
+
+  .section-subtitle {
+    font-size: 0.9rem !important;
+  }
+
+  /* Shop Product Grid - 2 columns on mobile for ideal browsing */
+  .shop-grid,
+  .featured-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+    padding: 0 4px !important;
+  }
+
+  .product-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 16px !important;
+    padding: 0 !important;
+  }
+
+  .product-img-wrapper {
+    height: 140px !important;
+  }
+
+  .product-info {
+    padding: 12px 10px !important;
+  }
+
+  .product-name {
+    font-size: 0.92rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .product-desc {
+    font-size: 0.78rem !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  .product-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    margin-top: 8px !important;
+  }
+
+  .product-price {
+    font-size: 0.9rem !important;
+    text-align: center !important;
+  }
+
+  .btn-add-to-cart,
+  .product-footer .btn {
+    width: 100% !important;
+    padding: 9px 12px !important;
+    font-size: 0.78rem !important;
+    justify-content: center !important;
+  }
+
+  /* Prevent iOS input auto-zoom by forcing minimum 16px font-size */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Checkout & Cart Page Container */
+  .checkout-container,
+  .cart-layout {
+    padding: 16px 12px !important;
+    margin-top: calc(75px + env(safe-area-inset-top)) !important;
+    border-radius: 18px !important;
+  }
+
+  /* Dialog / Modal overlays on mobile WebViews */
+  .modal-content,
+  .modal-overlay .modal {
+    width: 94% !important;
+    max-width: 440px !important;
+    max-height: 85vh !important;
+    padding: 20px 16px !important;
+    border-radius: 20px !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Extra small mobile screens (iPhone SE, 320px - 400px width) */
+@media screen and (max-width: 400px) {
+  .shop-grid,
+  .featured-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .hero-title {
+    font-size: 2.1rem !important;
+  }
+
+  .hero-cookie-premium {
+    width: min(242px, 80vw) !important;
+  }
+
+  .btn {
+    padding: 10px 14px !important;
+    font-size: 0.78rem !important;
+  }
 }

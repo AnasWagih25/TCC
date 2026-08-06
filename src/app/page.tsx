@@ -10,7 +10,7 @@ import ProductImageSlider from '@/components/ProductImageSlider';
 
 export default function Home() {
   const router = useRouter();
-  const { products, heroImage } = useCart();
+  const { products, heroImage, heroRotationEnabled } = useCart();
   const featuredProducts = products.slice(0, 3);
 
   return (
@@ -34,7 +34,12 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-image-presentation" style={{ position: 'relative', zIndex: 10 }}>
-            <img src={resolveImageUrl(heroImage)} alt="Premium Artisan Cookie" className="hero-cookie-premium" style={{ transform: 'rotate(15deg)' }} />
+            <img 
+              src={resolveImageUrl(heroImage)} 
+              alt="Premium Artisan Cookie" 
+              className={`hero-cookie-premium ${heroRotationEnabled ? 'rotate-360-slow' : ''}`} 
+              style={heroRotationEnabled ? undefined : { transform: 'rotate(15deg)' }} 
+            />
             <div className="sticker" style={{ background: '#FFFFFF', color: 'var(--brown)', position: 'absolute', bottom: '10%', right: '12%', transform: 'rotate(-5deg)', width: '110px', height: '110px', fontSize: '1.1rem', zIndex: 20 }}>LOVE AT<br />FIRST<br />BITE</div>
           </div>
         </div>
