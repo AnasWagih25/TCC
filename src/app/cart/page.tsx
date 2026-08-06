@@ -49,7 +49,7 @@ export default function Cart() {
                         {item.boxFlavors && item.boxFlavors.length > 0 && (
                           <div style={{ fontSize: '0.75rem', color: 'var(--brown-light)', marginTop: '4px', lineHeight: 1.6 }}>
                             {item.boxFlavors.map(bf => (
-                              <span key={bf.name} style={{ display: 'inline-block', background: 'var(--pink-light)', padding: '2px 8px', borderRadius: '50px', marginRight: '4px', marginBottom: '2px' }}>
+                              <span key={bf.name} style={{ display: 'inline-block', background: 'rgba(99, 61, 45, 0.08)', color: 'var(--brown)', padding: '2px 8px', borderRadius: '50px', marginRight: '4px', marginBottom: '2px', fontWeight: 500 }}>
                                 {bf.name} ×{bf.quantity}
                               </span>
                             ))}
@@ -58,7 +58,7 @@ export default function Cart() {
                         {item.selectedCustomizations && item.selectedCustomizations.length > 0 && (
                           <div style={{ fontSize: '0.75rem', color: 'var(--brown-light)', marginTop: '4px', lineHeight: 1.6 }}>
                             {item.selectedCustomizations.map(c => (
-                              <span key={c.name} style={{ display: 'inline-flex', flexDirection: 'column', background: 'rgba(210,150,80,0.15)', color: 'var(--brown)', padding: '2px 8px', borderRadius: '8px', marginRight: '4px', marginBottom: '4px', gap: '2px' }}>
+                              <span key={c.name} style={{ display: 'inline-flex', flexDirection: 'column', background: 'rgba(99, 61, 45, 0.08)', color: 'var(--brown)', padding: '2px 8px', borderRadius: '8px', marginRight: '4px', marginBottom: '4px', gap: '2px', fontWeight: 500 }}>
                                 <span>+ {c.name}</span>
                                 {c.text && <span style={{ fontSize: '0.65rem', fontStyle: 'italic', opacity: 0.8 }}>"{c.text}"</span>}
                               </span>
@@ -91,27 +91,27 @@ export default function Cart() {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    margin: '8px 0 12px',
-                    padding: '10px 12px',
-                    border: '1px solid var(--brown-light)',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(var(--brown-light-rgb, 180,140,100), 0.08)',
-                    fontSize: '0.85rem',
-                    color: 'var(--brown)',
+                    gap: '10px',
+                    margin: '0 0 10px',
+                    padding: '10px 14px',
+                    border: '1.5px solid var(--pink)',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                    fontSize: '0.88rem',
+                    color: '#FFFFFF',
                     lineHeight: 1.4,
                   }}>
                     <span style={{
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: '20px',
-                      height: '20px',
+                      width: '22px',
+                      height: '22px',
                       borderRadius: '50%',
-                      backgroundColor: 'var(--brown)',
-                      color: '#fff',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
+                      backgroundColor: 'var(--pink)',
+                      color: 'var(--brown)',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
                       flexShrink: 0,
                     }}>!</span>
                     <span style={{ fontWeight: 600 }}>Next-day delivery</span>
@@ -119,30 +119,30 @@ export default function Cart() {
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    margin: '0 0 12px',
-                    padding: '10px 12px',
-                    border: '1px solid var(--brown-light)',
-                    borderRadius: '8px',
-                    backgroundColor: 'rgba(var(--brown-light-rgb, 180,140,100), 0.08)',
-                    fontSize: '0.85rem',
-                    color: 'var(--brown)',
+                    gap: '10px',
+                    margin: '0 0 14px',
+                    padding: '10px 14px',
+                    border: '1.5px solid var(--pink)',
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                    fontSize: '0.88rem',
+                    color: '#FFFFFF',
                     lineHeight: 1.4,
                   }}>
                     <span style={{
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: '20px',
-                      height: '20px',
+                      width: '22px',
+                      height: '22px',
                       borderRadius: '50%',
-                      backgroundColor: 'var(--brown)',
-                      color: '#fff',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
+                      backgroundColor: 'var(--pink)',
+                      color: 'var(--brown)',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
                       flexShrink: 0,
                     }}>$</span>
-                    <span style={{ fontWeight: 600 }}>Payment Method: Cash on Delivery Only</span>
+                    <span style={{ fontWeight: 600 }}>Payment: Instapay / Telda (Uber) or Cash on Pickup</span>
                   </div>
                   <div className="summary-row total">
                     <span>Total</span>

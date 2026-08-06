@@ -11,7 +11,7 @@ export default function Footer() {
               width: '200px', 
               height: '100px', 
               marginBottom: '16px',
-              backgroundColor: 'var(--pink)',
+              backgroundColor: 'var(--white)',
               maskImage: 'url(/images/logo-new.png)',
               maskSize: 'contain',
               maskRepeat: 'no-repeat',
@@ -21,7 +21,7 @@ export default function Footer() {
               WebkitMaskRepeat: 'no-repeat',
               WebkitMaskPosition: 'left center'
             }} aria-label="The Cookie Concept Logo" />
-            <p style={{ fontSize: '1.1rem', fontWeight: 500 }}>Artisan cookies baked fresh daily in town. Experience perfection in every bite.</p>
+            <p style={{ fontSize: '1.1rem', fontWeight: 500, color: '#FAF5EF' }}>Artisan cookies baked fresh daily in town. Experience perfection in every bite.</p>
           </div>
           <div className="footer-col">
             <h4>Quick Links</h4>

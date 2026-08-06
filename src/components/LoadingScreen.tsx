@@ -8,7 +8,6 @@ export default function LoadingScreen() {
   const [isRendered, setIsRendered] = useState(true);
 
   useEffect(() => {
-    // Only show loading screen once per session if preferred, or every time.
     // For a fast cute intro, 1.8 seconds is perfect.
     const timer = setTimeout(() => {
       setIsVisible(false);
@@ -43,29 +42,39 @@ export default function LoadingScreen() {
         flexDirection: 'column',
         alignItems: 'center'
       }}>
-        <div style={{ width: '140px', height: '140px', position: 'relative', marginBottom: '24px' }}>
+        <div style={{ 
+          width: '140px', 
+          height: '140px', 
+          position: 'relative', 
+          marginBottom: '24px',
+          filter: 'brightness(0) invert(1) drop-shadow(0 6px 16px rgba(243, 195, 206, 0.4))' 
+        }}>
           <Image src="/images/logo-new.png" alt="Loading..." fill style={{ objectFit: 'contain' }} unoptimized />
         </div>
         <h1 
           style={{ 
             fontFamily: "'Ahsing', sans-serif", 
-            color: 'var(--brown)',
+            color: '#FFFFFF',
             fontSize: '3.5rem',
             textAlign: 'center',
             lineHeight: 1,
             textTransform: 'uppercase',
-            letterSpacing: '-1px'
+            letterSpacing: '-1px',
+            textShadow: '0 4px 20px rgba(0, 0, 0, 0.6)'
           }}
         >
           LOVE AT<br/>
-          <span style={{ color: 'var(--brown)' }}>FIRST</span><br/>
+          <span style={{ color: 'var(--pink)' }}>FIRST</span><br/>
           BITE
         </h1>
+        <p style={{ color: 'var(--pink-light)', fontSize: '0.88rem', letterSpacing: '2.5px', textTransform: 'uppercase', marginTop: '16px', fontWeight: 600, opacity: 0.9 }}>
+          Baking Fresh Batches...
+        </p>
       </div>
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes introBounce {
           0% { transform: translateY(0) scale(1); }
-          100% { transform: translateY(-15px) scale(1.05); }
+          100% { transform: translateY(-12px) scale(1.04); }
         }
       `}} />
     </div>

@@ -73,10 +73,64 @@ export type PromoCode = {
   isActive: boolean;
 };
 
+export type PickupSettings = {
+  address: string;
+  lat: number;
+  lng: number;
+  mapUrl: string;
+  hoursNotice: string;
+};
+
+export function parseGoogleMapsUrl(inputUrl: string): { lat: number; lng: number; mapUrl: string } {
+  const url = inputUrl.trim();
+  let lat = 30.0444;
+  let lng = 31.2357;
+
+  if (!url) {
+    return { lat, lng, mapUrl: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}` };
+  }
+
+  // Regex 1: @lat,lng format e.g. /@30.0444,31.2357,15z
+  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (atMatch) {
+    lat = parseFloat(atMatch[1]);
+    lng = parseFloat(atMatch[2]);
+  } else {
+    // Regex 2: q=lat,lng or query=lat,lng or place/lat,lng or ll=lat,lng
+    const queryMatch = url.match(/(?:q|query|place|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/) || url.match(/\/place\/(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (queryMatch) {
+      lat = parseFloat(queryMatch[1]);
+      lng = parseFloat(queryMatch[2]);
+    } else {
+      // Regex 3: Plain numbers lat, lng e.g. "30.0444, 31.2357"
+      const pairMatch = url.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+      if (pairMatch) {
+        lat = parseFloat(pairMatch[1]);
+        lng = parseFloat(pairMatch[2]);
+      }
+    }
+  }
+
+  const mapUrl = url.startsWith('http://') || url.startsWith('https://')
+    ? url
+    : `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+  return { lat, lng, mapUrl };
+}
+
+export const defaultPickupSettings: PickupSettings = {
+  address: 'The Cookie Concept Bakery Branch, New Cairo, Cairo, Egypt',
+  lat: 30.0444,
+  lng: 31.2357,
+  mapUrl: 'https://www.google.com/maps/search/?api=1&query=30.0444,31.2357',
+  hoursNotice: 'Next day from 12:00 PM to 8:00 PM only',
+};
+
 export type Order = {
   id: string;
   date: string;
   source?: 'web' | 'manual';
+  deliveryMethod?: 'uber' | 'pickup';
   customer: {
     name: string;
     phone: string;
@@ -113,7 +167,7 @@ type CartContextType = {
   addBoxToCart: (productId: string, boxSize: number, selections: BoxFlavorSelection[], selectedCustomizations?: { name: string; price: number; text?: string }[]) => { success: boolean; message: string };
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
   removeFromCart: (index: number) => void;
-  placeOrder: (customerInfo: any, deliveryFee?: number, discount?: number) => Promise<Order>;
+  placeOrder: (customerInfo: any, deliveryFee?: number, discount?: number, deliveryMethod?: 'uber' | 'pickup') => Promise<Order>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (index: number) => Promise<void>;
   updateHeroImage: (url: string) => Promise<void>;
@@ -122,6 +176,8 @@ type CartContextType = {
   deleteOrder: (orderId: string) => void;
   promoSettings: PromoCode | null;
   updatePromoSettings: (promo: PromoCode) => Promise<void>;
+  pickupSettings: PickupSettings;
+  updatePickupSettings: (settings: PickupSettings) => Promise<void>;
   categories: Category[];
   addCategory: (category: Category) => Promise<void>;
   updateCategory: (category: Category) => Promise<void>;
@@ -137,6 +193,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [heroImage, setHeroImage] = useState<string>('/images/preview.png');
   const [promoSettings, setPromoSettings] = useState<PromoCode | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [pickupSettings, setPickupSettings] = useState<PickupSettings>(defaultPickupSettings);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -158,6 +215,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     // Load cached hero image if available
     const savedHero = localStorage.getItem('tcc_hero_image');
     if (savedHero) setHeroImage(savedHero);
+
+    // Load cached pickup settings
+    const savedPickup = localStorage.getItem('tcc_pickup_settings');
+    if (savedPickup) setPickupSettings(JSON.parse(savedPickup));
 
     // Unblock the UI immediately!
     setIsLoaded(true);
@@ -212,6 +273,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const promoSnap = await getDoc(doc(db, 'settings', 'promo'));
         if (promoSnap.exists()) {
           setPromoSettings(promoSnap.data() as PromoCode);
+        }
+
+        // Fetch pickup settings
+        const pickupSnap = await getDoc(doc(db, 'settings', 'pickup'));
+        if (pickupSnap.exists()) {
+          const livePickup = pickupSnap.data() as PickupSettings;
+          setPickupSettings(livePickup);
+          try { localStorage.setItem('tcc_pickup_settings', JSON.stringify(livePickup)); } catch (e) {}
         }
 
         // Fetch categories
@@ -396,21 +465,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(newCart);
   };
 
-  const placeOrder = async (customerInfo: any, deliveryFee: number = 70, discount: number = 0) => {
+  const placeOrder = async (customerInfo: any, deliveryFee: number = 0, discount: number = 0, deliveryMethod: 'uber' | 'pickup' = 'uber') => {
     const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
     
     let subtotal = 0;
     cart.forEach(item => subtotal += item.price * item.quantity);
-    const total = subtotal + deliveryFee - discount;
+    const finalFee = deliveryMethod === 'pickup' ? 0 : deliveryFee;
+    const total = Math.max(0, subtotal + finalFee - discount);
 
     const newOrder: Order = {
       id: orderId,
       date: new Date().toISOString(),
       source: 'web',
+      deliveryMethod,
       customer: customerInfo,
       items: [...cart],
       total: total,
-      deliveryFee: deliveryFee,
+      deliveryFee: finalFee,
       discount: discount,
       status: 'pending'
     };
@@ -525,6 +596,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setOrders(orders.filter(order => order.id !== orderId));
   };
 
+  const updatePickupSettings = async (settings: PickupSettings) => {
+    await setDoc(doc(db, 'settings', 'pickup'), settings);
+    setPickupSettings(settings);
+    try { localStorage.setItem('tcc_pickup_settings', JSON.stringify(settings)); } catch (e) {}
+  };
+
   const addCategory = async (category: Category) => {
     await setDoc(doc(db, 'categories', category.id), category);
     setCategories(prev => [...prev, category]);
@@ -544,9 +621,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <CartContext.Provider value={{
-      products, cart, orders, heroImage, promoSettings, categories,
+      products, cart, orders, heroImage, promoSettings, categories, pickupSettings,
       addToCart, addBoxToCart, updateQuantity, removeFromCart, placeOrder,
-      updateProduct, deleteProduct, updateHeroImage, markOrderFulfilled, addManualOrder, deleteOrder, updatePromoSettings,
+      updateProduct, deleteProduct, updateHeroImage, markOrderFulfilled, addManualOrder, deleteOrder, updatePromoSettings, updatePickupSettings,
       addCategory, updateCategory, deleteCategory
     }}>
       {children}

@@ -79,6 +79,7 @@ export async function POST(req: Request) {
         <!-- Body -->
         <div style="padding: 30px; background-color: #FFF9FA;">
           <h2 style="font-size: 18px; color: #633D2D; border-bottom: 2px solid #FAD1D9; padding-bottom: 8px;">Customer Details</h2>
+          <p style="margin: 8px 0; font-size: 14px;"><strong>Fulfillment Option:</strong> <span style="background: #FAD1D9; padding: 2px 8px; border-radius: 4px; font-weight: bold;">${orderData.deliveryMethod === 'pickup' ? '🛍️ Pickup (Next day 12-8 PM)' : '🚗 Uber Delivery'}</span></p>
           <p style="margin: 8px 0; font-size: 14px;"><strong>Name:</strong> ${orderData.customer.name}</p>
           <p style="margin: 8px 0; font-size: 14px;"><strong>Phone:</strong> ${orderData.customer.phone}</p>
           <p style="margin: 8px 0; font-size: 14px;"><strong>Email:</strong> ${orderData.customer.email}</p>

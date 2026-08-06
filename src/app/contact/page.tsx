@@ -34,7 +34,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="page active polka-bg-light" style={{ paddingTop: '120px', paddingBottom: '80px', minHeight: '100vh' }}>
+    <div className="page active polka-bg" style={{ paddingTop: '120px', paddingBottom: '80px', minHeight: '100vh' }}>
       <div className="section-container" style={{ maxWidth: '800px', margin: '0 auto' }}>
         
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -42,15 +42,16 @@ export default function ContactPage() {
             width: '64px', height: '64px', borderRadius: '50%', 
             background: 'linear-gradient(135deg, var(--pink) 0%, var(--pink-dark) 100%)', 
             display: 'flex', alignItems: 'center', justifyContent: 'center', 
-            margin: '0 auto 16px', color: '#fff'
-          }}><MessageSquare size={32} /></div>
-          <h2 style={{ fontSize: '3rem', color: 'var(--brown)', marginBottom: '16px' }}>Contact Us</h2>
-          <p style={{ fontSize: '1.2rem', color: 'var(--brown-light)', maxWidth: '600px', margin: '0 auto' }}>
+            margin: '0 auto 16px', color: 'var(--brown)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)'
+          }}><MessageSquare size={30} /></div>
+          <h2 style={{ fontSize: '3rem', color: '#FFFFFF', marginBottom: '16px' }}>Contact Us</h2>
+          <p style={{ fontSize: '1.2rem', color: 'var(--pink-light)', maxWidth: '600px', margin: '0 auto' }}>
             Have a question, feedback, or a special request? We'd love to hear from you. Fill out the form below and our team will get back to you shortly.
           </p>
         </div>
 
-        <div style={{ background: 'var(--white)', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 40px rgba(99, 61, 45, 0.08)' }}>
+        <div style={{ background: 'var(--white)', padding: '40px', borderRadius: '24px', boxShadow: '0 10px 40px rgba(99, 61, 45, 0.08)', border: '1.5px solid rgba(99, 61, 45, 0.12)' }}>
           {status === 'success' ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
               <CheckCircle2 size={64} color="#27ae60" style={{ margin: '0 auto 20px' }} />
@@ -66,7 +67,7 @@ export default function ContactPage() {
                   <input
                     type="text" required placeholder="Ahmed Mohamed"
                     value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--pink)', background: 'var(--off-white)', fontSize: '1rem' }}
+                    style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1.5px solid rgba(99, 61, 45, 0.18)', background: 'var(--off-white)', fontSize: '1rem' }}
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -74,7 +75,7 @@ export default function ContactPage() {
                   <input
                     type="email" required placeholder="you@example.com"
                     value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--pink)', background: 'var(--off-white)', fontSize: '1rem' }}
+                    style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1.5px solid rgba(99, 61, 45, 0.18)', background: 'var(--off-white)', fontSize: '1rem' }}
                   />
                 </div>
               </div>
@@ -85,7 +86,7 @@ export default function ContactPage() {
                   <input
                     type="tel" placeholder="01xxxxxxxxx"
                     value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--pink)', background: 'var(--off-white)', fontSize: '1rem' }}
+                    style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1.5px solid rgba(99, 61, 45, 0.18)', background: 'var(--off-white)', fontSize: '1rem' }}
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -93,7 +94,7 @@ export default function ContactPage() {
                   <select
                     required
                     value={formData.inquiryType} onChange={(e) => setFormData({ ...formData, inquiryType: e.target.value })}
-                    style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--pink)', background: 'var(--off-white)', fontSize: '1rem', appearance: 'none' }}
+                    style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1.5px solid rgba(99, 61, 45, 0.18)', background: 'var(--off-white)', fontSize: '1rem', appearance: 'none' }}
                   >
                     <option value="General Inquiry">General Inquiry</option>
                     <option value="Order Issue">Order Issue</option>
@@ -108,7 +109,7 @@ export default function ContactPage() {
                 <textarea
                   required placeholder="How can we help you today?"
                   value={formData.message} onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--pink)', background: 'var(--off-white)', fontSize: '1rem', minHeight: '150px', fontFamily: 'inherit' }}
+                  style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '1.5px solid rgba(99, 61, 45, 0.18)', background: 'var(--off-white)', fontSize: '1rem', minHeight: '150px', fontFamily: 'inherit' }}
                 />
               </div>
 

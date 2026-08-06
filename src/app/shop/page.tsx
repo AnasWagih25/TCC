@@ -153,9 +153,9 @@ export default function Shop() {
         <div className="wavy-border-top" style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1 }}></div>
         <div className="section-container" style={{ position: 'relative', zIndex: 2 }}>
           <div className="section-header" style={{ marginBottom: '80px', position: 'relative' }}>
-            <div className="sticker brown" style={{ top: '-40px', right: '10%', transform: 'rotate(15deg)', width: '100px', fontSize: '1.2rem' }}>MENU</div>
-            <h2 className="section-title" style={{ fontSize: '3.5rem' }}>Our Cookie Menu</h2>
-            <p className="section-subtitle" style={{ fontSize: '1.2rem', maxWidth: '600px' }}>Add your favorite concepts to the cart. Fresh batches baked daily.</p>
+            <div className="sticker pink" style={{ top: '-40px', right: '10%', transform: 'rotate(15deg)', width: '100px', fontSize: '1.2rem' }}>MENU</div>
+            <h2 className="section-title" style={{ fontSize: '3.5rem', color: '#FFFFFF' }}>Our Cookie Menu</h2>
+            <p className="section-subtitle" style={{ fontSize: '1.2rem', maxWidth: '600px', color: 'var(--pink-light)' }}>Add your favorite concepts to the cart. Fresh batches baked daily.</p>
           </div>
           
           <div className="shop-grid">
@@ -258,26 +258,26 @@ export default function Shop() {
               </div>
               {/* Content */}
               <div style={{ padding: '20px 24px 24px' }}>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--brown)', margin: '0 0 6px', lineHeight: 1.2 }}>{p.name}</h2>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: '#FFFFFF', margin: '0 0 6px', lineHeight: 1.2 }}>{p.name}</h2>
                 {cat?.flavorType === 'single' && p.flavor ? (
-                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--brown-light)', fontSize: '0.9rem', margin: '0 0 16px', fontStyle: 'italic' }}><Cookie size={14} /> {p.flavor}</p>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--pink)', fontSize: '0.9rem', margin: '0 0 16px', fontStyle: 'italic' }}><Cookie size={14} /> {p.flavor}</p>
                 ) : p.description ? (
-                  <p style={{ color: 'var(--brown-light)', fontSize: '0.88rem', margin: '0 0 16px', lineHeight: 1.5 }}>{p.description}</p>
+                  <p style={{ color: 'var(--pink-light)', fontSize: '0.88rem', margin: '0 0 16px', lineHeight: 1.5 }}>{p.description}</p>
                 ) : null}
 
                 {/* Size selector for cakes */}
                 {cat?.sizeType === 'normal_mini' && (
                   <div style={{ marginBottom: '20px' }}>
-                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--brown)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Choose Size</label>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Choose Size</label>
                     <div style={{ display: 'flex', gap: '10px' }}>
                       {(['Normal', 'Mini'] as const).map(sz => {
                         const active = detailSize === sz;
                         const pr = sz === 'Normal' ? p.price.normal : p.price.mini;
                         return (
-                          <button key={sz} onClick={() => setDetailSize(sz)} style={{ flex: 1, padding: '12px 8px', borderRadius: '14px', border: active ? '2px solid var(--brown)' : '2px solid var(--pink)', background: active ? 'var(--pink)' : '#fff', cursor: 'pointer', transition: '0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                            <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--brown)' }}>{sz}</span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--brown-light)' }}>{sz === 'Normal' ? '7-8 Slices' : '5 Slices'}</span>
-                            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--brown)', marginTop: '2px' }}>EGP {Number(pr).toFixed(0)}</span>
+                          <button key={sz} onClick={() => setDetailSize(sz)} style={{ flex: 1, padding: '12px 8px', borderRadius: '14px', border: active ? '2.5px solid var(--pink)' : '1.5px solid rgba(243, 195, 206, 0.3)', background: active ? 'var(--pink)' : '#3B2116', cursor: 'pointer', transition: '0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.92rem', color: active ? 'var(--brown)' : '#FFFFFF' }}>{sz}</span>
+                            <span style={{ fontSize: '0.72rem', color: active ? 'var(--brown)' : 'var(--pink-light)' }}>{sz === 'Normal' ? '7-8 Slices' : '5 Slices'}</span>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: active ? 'var(--brown)' : 'var(--pink)', marginTop: '2px' }}>EGP {Number(pr).toFixed(0)}</span>
                           </button>
                         );
                       })}
@@ -288,25 +288,26 @@ export default function Shop() {
                 {/* Customizations */}
                 {p.customizations && p.customizations.length > 0 && (
                   <div style={{ marginBottom: '20px' }}>
-                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--brown)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Extra Options</label>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Extra Options</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {p.customizations.map(c => {
                         const sizePrice = cat?.sizeType === 'normal_mini' ? c.pricing?.[detailSize] : c.price;
                         const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
+                        const isChecked = !!detailCustomizations[c.name];
                         return (
-                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', borderRadius: '12px', background: isChecked ? '#3B2116' : 'rgba(0, 0, 0, 0.2)', border: isChecked ? '1.5px solid var(--pink)' : '1px solid rgba(243, 195, 206, 0.2)' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                              <input type="checkbox" checked={!!detailCustomizations[c.name]}
+                              <input type="checkbox" checked={isChecked}
                                 onChange={e => setDetailCustomizations(prev => ({ ...prev, [c.name]: e.target.checked }))}
-                                style={{ width: '18px', height: '18px', accentColor: 'var(--pink-dark)' }} />
-                              <span style={{ fontSize: '0.9rem', color: 'var(--brown)', flex: 1 }}>{c.name}</span>
-                              <span style={{ fontSize: '0.85rem', color: 'var(--brown-light)', fontWeight: 600 }}>+ EGP {displayPrice.toFixed(0)}</span>
+                                style={{ width: '18px', height: '18px', accentColor: 'var(--pink)' }} />
+                              <span style={{ fontSize: '0.9rem', color: '#FFFFFF', fontWeight: 600, flex: 1 }}>{c.name}</span>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--pink)', fontWeight: 700 }}>+ EGP {displayPrice.toFixed(0)}</span>
                             </label>
-                            {c.requiresText && detailCustomizations[c.name] && (
+                            {c.requiresText && isChecked && (
                               <input type="text" placeholder="Enter text here..." 
                                 value={detailCustomizationTexts[c.name] || ''}
                                 onChange={e => setDetailCustomizationTexts(prev => ({ ...prev, [c.name]: e.target.value }))}
-                                style={{ marginLeft: '28px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--pink)', fontSize: '0.8rem', outline: 'none' }} />
+                                style={{ marginLeft: '28px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#2D1A12', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }} />
                             )}
                           </div>
                         );
@@ -316,15 +317,15 @@ export default function Shop() {
                 )}
 
                 {/* Footer */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '16px', borderTop: '1px solid var(--pink)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '16px', borderTop: '1px solid rgba(243, 195, 206, 0.2)' }}>
                   <div style={{ flex: '0 0 auto' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--brown-light)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Price</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--brown)', fontFamily: 'var(--font-display)' }}>EGP {Number(curPrice).toFixed(2)}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--pink-light)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Price</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFFFFF', fontFamily: 'var(--font-display)' }}>EGP {Number(curPrice).toFixed(2)}</div>
                   </div>
                   <button
                     disabled={isOut}
                     onClick={() => handleAddToCart(p.id, isCk ? 'Normal' : detailSize)}
-                    style={{ flex: 1, padding: '14px 20px', borderRadius: '50px', border: 'none', background: isOut ? '#ccc' : 'var(--brown)', color: '#fff', fontSize: '0.95rem', fontWeight: 700, cursor: isOut ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s', fontFamily: 'var(--font-body)', opacity: isOut ? 0.6 : 1 }}
+                    style={{ flex: 1, padding: '14px 20px', borderRadius: '50px', border: 'none', background: isOut ? '#555' : 'var(--pink)', color: isOut ? '#fff' : 'var(--brown)', fontSize: '0.95rem', fontWeight: 700, cursor: isOut ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s', fontFamily: 'var(--font-body)', opacity: isOut ? 0.6 : 1 }}
                   >
                     {isOut ? 'Sold Out' : (<><ShoppingCart size={18} /> Add to Cart</>)}
                   </button>
@@ -384,11 +385,11 @@ export default function Shop() {
                           style={{
                             padding: '12px 16px',
                             borderRadius: '14px',
-                            border: isActive ? '2px solid var(--brown)' : '2px solid rgba(250,209,217,0.6)',
+                            border: isActive ? '2.5px solid var(--pink)' : '1.5px solid rgba(243, 195, 206, 0.3)',
                             fontSize: '0.85rem',
                             fontWeight: isActive ? 700 : 500,
-                            background: isActive ? 'var(--pink)' : '#fff',
-                            color: 'var(--brown)',
+                            background: isActive ? 'var(--pink)' : '#3B2116',
+                            color: isActive ? 'var(--brown)' : '#FFFFFF',
                             cursor: 'pointer',
                             transition: '0.2s',
                             display: 'flex',
@@ -401,7 +402,7 @@ export default function Shop() {
                         >
                           <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Box of {opt.size}</span>
                           {opt.price > 0 && (
-                            <span style={{ fontSize: '0.78rem', color: isActive ? 'var(--brown)' : 'var(--brown-light)' }}>
+                            <span style={{ fontSize: '0.78rem', color: isActive ? 'var(--brown)' : 'var(--pink-light)' }}>
                               EGP {opt.price}
                             </span>
                           )}
@@ -423,8 +424,8 @@ export default function Shop() {
                         fontWeight: 700,
                         padding: '4px 14px',
                         borderRadius: '50px',
-                        background: isFull ? 'rgba(46,204,113,0.15)' : 'var(--pink)',
-                        color: isFull ? '#27ae60' : 'var(--brown)',
+                        background: isFull ? 'rgba(46,204,113,0.25)' : 'var(--pink)',
+                        color: isFull ? '#2ecc71' : 'var(--brown)',
                         transition: '0.25s',
                         border: 'none',
                         textTransform: 'none',
@@ -440,9 +441,9 @@ export default function Shop() {
                         return (
                           <div key={flavor.name} style={{
                             display: 'flex', alignItems: 'center', gap: '10px',
-                            padding: '8px 10px', borderRadius: '12px',
-                            background: qty > 0 ? 'rgba(250,209,217,0.2)' : '#fff',
-                            border: `1.5px solid ${qty > 0 ? 'var(--pink-dark)' : 'rgba(250,209,217,0.5)'}`,
+                            padding: '10px 12px', borderRadius: '12px',
+                            background: qty > 0 ? '#3B2116' : 'rgba(0, 0, 0, 0.2)',
+                            border: `1.5px solid ${qty > 0 ? 'var(--pink)' : 'rgba(243, 195, 206, 0.2)'}`,
                             transition: '0.2s',
                           }}>
                             {flavor.image && (
@@ -450,15 +451,15 @@ export default function Shop() {
                                 style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0, transform: 'none' }} />
                             )}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--brown)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {flavor.name}
                               </div>
                               {hasSurcharge ? (
-                                <div style={{ fontSize: '0.72rem', color: '#c0392b', fontWeight: 600 }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--pink)', fontWeight: 700 }}>
                                   + EGP {flavor.price.toFixed(0)} each
                                 </div>
                               ) : (
-                                <div style={{ fontSize: '0.72rem', color: 'var(--brown-light)' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--pink-light)' }}>
                                   Included
                                 </div>
                               )}
@@ -468,27 +469,27 @@ export default function Shop() {
                                 onClick={() => handleBoxFlavorQty(flavor.name, -1, boxModalSize)}
                                 disabled={qty <= 0}
                                 style={{
-                                  width: '30px', height: '30px', borderRadius: '50%',
-                                  border: 'none', background: qty > 0 ? 'var(--pink)' : '#eee',
-                                  color: 'var(--brown)', cursor: qty > 0 ? 'pointer' : 'default',
+                                  width: '32px', height: '32px', borderRadius: '50%',
+                                  border: 'none', background: qty > 0 ? 'var(--pink)' : 'rgba(255,255,255,0.1)',
+                                  color: qty > 0 ? 'var(--brown)' : '#888', cursor: qty > 0 ? 'pointer' : 'default',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  transition: '0.15s',
+                                  transition: '0.15s', fontWeight: 700
                                 }}
                               >
                                 <Minus size={16} />
                               </button>
-                              <span style={{ width: '26px', textAlign: 'center', fontSize: '1rem', fontWeight: 700, color: 'var(--brown)' }}>
+                              <span style={{ width: '28px', textAlign: 'center', fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>
                                 {qty}
                               </span>
                               <button
                                 onClick={() => handleBoxFlavorQty(flavor.name, 1, boxModalSize)}
                                 disabled={totalPicked >= boxModalSize}
                                 style={{
-                                  width: '30px', height: '30px', borderRadius: '50%',
-                                  border: 'none', background: totalPicked < boxModalSize ? 'var(--pink)' : '#eee',
-                                  color: 'var(--brown)', cursor: totalPicked < boxModalSize ? 'pointer' : 'default',
+                                  width: '32px', height: '32px', borderRadius: '50%',
+                                  border: 'none', background: totalPicked < boxModalSize ? 'var(--pink)' : 'rgba(255,255,255,0.1)',
+                                  color: totalPicked < boxModalSize ? 'var(--brown)' : '#888', cursor: totalPicked < boxModalSize ? 'pointer' : 'default',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  transition: '0.15s',
+                                  transition: '0.15s', fontWeight: 700
                                 }}
                               >
                                 <Plus size={16} />
@@ -511,20 +512,21 @@ export default function Shop() {
                       {p.customizations.map(c => {
                         const sizePrice = boxModalSize ? c.pricing?.[boxModalSize.toString()] : c.price;
                         const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
+                        const isChecked = !!boxModalCustomizations[c.name];
                         return (
-                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px 10px', borderRadius: '12px', background: boxModalCustomizations[c.name] ? 'rgba(250,209,217,0.2)' : '#fff', border: `1.5px solid ${boxModalCustomizations[c.name] ? 'var(--pink-dark)' : 'rgba(250,209,217,0.5)'}` }}>
+                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', borderRadius: '12px', background: isChecked ? '#3B2116' : 'rgba(0, 0, 0, 0.2)', border: `1.5px solid ${isChecked ? 'var(--pink)' : 'rgba(243, 195, 206, 0.2)'}` }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                              <input type="checkbox" checked={!!boxModalCustomizations[c.name]}
+                              <input type="checkbox" checked={isChecked}
                                 onChange={e => setBoxModalCustomizations(prev => ({ ...prev, [c.name]: e.target.checked }))}
-                                style={{ width: '18px', height: '18px', accentColor: 'var(--pink-dark)' }} />
-                              <span style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--brown)', flex: 1 }}>{c.name}</span>
-                              <span style={{ fontSize: '0.84rem', color: '#c0392b', fontWeight: 600 }}>+ EGP {displayPrice.toFixed(0)}</span>
+                                style={{ width: '18px', height: '18px', accentColor: 'var(--pink)' }} />
+                              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#FFFFFF', flex: 1 }}>{c.name}</span>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--pink)', fontWeight: 700 }}>+ EGP {displayPrice.toFixed(0)}</span>
                             </label>
-                            {c.requiresText && boxModalCustomizations[c.name] && (
+                            {c.requiresText && isChecked && (
                               <input type="text" placeholder="Enter text here..." 
                                 value={boxModalCustomizationTexts[c.name] || ''}
                                 onChange={e => setBoxModalCustomizationTexts(prev => ({ ...prev, [c.name]: e.target.value }))}
-                                style={{ marginLeft: '28px', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--pink)', fontSize: '0.8rem', outline: 'none' }} />
+                                style={{ marginLeft: '28px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#2D1A12', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }} />
                             )}
                           </div>
                         );
@@ -539,11 +541,11 @@ export default function Shop() {
                 {boxModalSize != null && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--brown-light)' }}>Box Total</div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--brown)' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--pink-light)', fontWeight: 600 }}>Box Total</div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#FFFFFF' }}>
                         EGP {total.toFixed(0)}
                         {surcharge > 0 && (
-                          <span style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--brown-light)', marginLeft: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--pink-light)', marginLeft: '6px' }}>
                             (incl. +{surcharge.toFixed(0)} surcharge)
                           </span>
                         )}
@@ -553,7 +555,7 @@ export default function Shop() {
                 )}
                 <button
                   className="btn btn-primary"
-                  style={{ width: '100%', opacity: isFull ? 1 : 0.5 }}
+                  style={{ width: '100%', opacity: isFull ? 1 : 0.5, background: isFull ? 'var(--pink)' : '#555', color: isFull ? 'var(--brown)' : '#fff', fontWeight: 700 }}
                   disabled={!isFull}
                   onClick={handleBoxAddToCart}
                 >

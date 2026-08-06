@@ -6,20 +6,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
 
 :root {
-  --pink: #FAD1D9;
-  --pink-light: #FDE8EC;
-  --pink-dark: #F0B4C0;
+  --pink: #F3C3CE;
+  --pink-light: #FDF5F6;
+  --pink-dark: #D8899A;
   --brown: #633D2D;
   --brown-light: #7A5243;
   --brown-dark: #4A2D20;
   --white: #FFFFFF;
-  --off-white: #FFF9FA;
+  --off-white: #FAF5EF;
+  --cream-bg: #FAF5EF;
   --gray: #999;
   --gray-light: #f5f5f5;
-  --shadow: 0 4px 24px rgba(99, 61, 45, 0.10);
-  --shadow-hover: 0 8px 32px rgba(99, 61, 45, 0.18);
-  --radius: 16px;
-  --radius-sm: 10px;
+  --shadow: 0 10px 30px rgba(99, 61, 45, 0.08);
+  --shadow-hover: 0 16px 36px rgba(99, 61, 45, 0.14);
+  --radius: 20px;
+  --radius-sm: 12px;
   --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -62,8 +63,8 @@ html {
 
 body {
   font-family: 'Inter', sans-serif;
-  color: var(--brown);
-  background: var(--off-white);
+  color: #FFFFFF;
+  background: var(--brown);
   line-height: 1.6;
   overflow-x: hidden;
   min-height: 100dvh;

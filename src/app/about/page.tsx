@@ -17,32 +17,32 @@ export default function AboutPage() {
           </div>
 
           <div className="about-grid">
-            <article className="about-card" style={{ borderRadius: '36px', border: '3px solid var(--pink)', background: 'var(--white)' }}>
-              <div className="about-icon">
-                <ChefHat size={30} color="var(--brown)" strokeWidth={2} />
+            <article className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF' }}>
+              <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}>
+                <ChefHat size={28} color="var(--brown)" strokeWidth={2} />
               </div>
-              <h3 style={{ fontSize: '1.4rem' }}>From Family Kitchen to Local Favorite</h3>
-              <p>
+              <h3 style={{ fontSize: '1.4rem', color: '#FFFFFF' }}>From Family Kitchen to Local Favorite</h3>
+              <p style={{ color: 'var(--pink-light)' }}>
                 What started as weekend baking for friends and family grew into a cookie studio focused on quality, comfort, and creativity in every box.
               </p>
             </article>
 
-            <article className="about-card" style={{ borderRadius: '36px', border: 'none', background: 'var(--pink-light)', transform: 'translateY(18px)' }}>
-              <div className="about-icon" style={{ background: 'var(--white)' }}>
-                <Heart size={30} color="var(--pink-dark)" strokeWidth={2.2} />
+            <article className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF', transform: 'translateY(12px)' }}>
+              <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}>
+                <Heart size={28} color="var(--brown)" strokeWidth={2.2} />
               </div>
-              <h3 style={{ fontSize: '1.4rem' }}>Baked with Intention</h3>
-              <p>
+              <h3 style={{ fontSize: '1.4rem', color: '#FFFFFF' }}>Baked with Intention</h3>
+              <p style={{ color: 'var(--pink-light)' }}>
                 The baker personally tests every recipe, sources premium ingredients, and bakes in small batches to keep each cookie fresh and full of flavor.
               </p>
             </article>
 
-            <article className="about-card" style={{ borderRadius: '36px', border: 'none', background: 'var(--pink)' }}>
-              <div className="about-icon" style={{ background: 'var(--white)' }}>
-                <Sparkles size={30} color="var(--brown)" strokeWidth={2} />
+            <article className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF' }}>
+              <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}>
+                <Sparkles size={28} color="var(--brown)" strokeWidth={2} />
               </div>
-              <h3 style={{ fontSize: '1.4rem' }}>The Mission</h3>
-              <p>
+              <h3 style={{ fontSize: '1.4rem', color: '#FFFFFF' }}>The Mission</h3>
+              <p style={{ color: 'var(--pink-light)' }}>
                 Create joyful moments through artisan cookie cakes that feel nostalgic and exciting at the same time - one concept, one bite, one smile at a time.
               </p>
             </article>

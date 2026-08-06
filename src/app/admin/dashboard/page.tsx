@@ -7,14 +7,14 @@ import { updateProfile } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase';
-import { useCart, Product, Order, Flavor, resolveImageUrl, Category } from '@/context/CartContext';
+import { useCart, Product, Order, Flavor, resolveImageUrl, Category, parseGoogleMapsUrl } from '@/context/CartContext';
 import { Cookie, TrendingUp, Package, Image as ImageIcon, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 
 export default function AdminDashboard() {
   const { user, loading, logout } = useAuth();
-  const { products, heroImage, updateHeroImage, updateProduct, deleteProduct, addManualOrder: cartAddManualOrder, promoSettings, updatePromoSettings, categories, addCategory, updateCategory, deleteCategory } = useCart();
+  const { products, heroImage, updateHeroImage, updateProduct, deleteProduct, addManualOrder: cartAddManualOrder, promoSettings, updatePromoSettings, pickupSettings, updatePickupSettings, categories, addCategory, updateCategory, deleteCategory } = useCart();
   const router = useRouter();
 
   // ── Direct Firestore orders (bypasses localStorage entirely) ──
@@ -94,6 +94,14 @@ export default function AdminDashboard() {
     isActive: false
   });
 
+  const [pickupForm, setPickupForm] = useState({
+    address: '',
+    lat: 30.0444,
+    lng: 31.2357,
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=30.0444,31.2357',
+    hoursNotice: 'Next day from 12:00 PM to 8:00 PM only'
+  });
+
   useEffect(() => {
     if (promoSettings) {
       setPromoForm({
@@ -105,6 +113,12 @@ export default function AdminDashboard() {
     }
   }, [promoSettings]);
 
+  useEffect(() => {
+    if (pickupSettings) {
+      setPickupForm(pickupSettings);
+    }
+  }, [pickupSettings]);
+
   const handleSavePromo = async (e: React.FormEvent) => {
     e.preventDefault();
     await updatePromoSettings({
@@ -114,6 +128,20 @@ export default function AdminDashboard() {
       isActive: promoForm.isActive
     });
     alert('Promo code settings updated!');
+  };
+
+  const handleSavePickup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseGoogleMapsUrl(pickupForm.mapUrl || '');
+    const updatedSettings = {
+      ...pickupForm,
+      lat: parsed.lat,
+      lng: parsed.lng,
+      mapUrl: parsed.mapUrl,
+    };
+    await updatePickupSettings(updatedSettings);
+    setPickupForm(updatedSettings);
+    alert(`Store pickup location settings updated!\nExtracted coordinates: (${parsed.lat}, ${parsed.lng})`);
   };
   
   // Product Modal State
@@ -436,7 +464,7 @@ export default function AdminDashboard() {
                         setNewName(user.displayName || '');
                         setIsEditingName(true);
                       }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brown)', textDecoration: 'underline', fontSize: '0.8rem', padding: 0 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pink)', textDecoration: 'underline', fontSize: '0.8rem', padding: 0 }}
                       title="Edit Name"
                     >
                       Edit
@@ -701,8 +729,8 @@ export default function AdminDashboard() {
               <div className="admin-toolbar">
                 <h3>Store Settings</h3>
               </div>
-              <div className="admin-settings-section" style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #eee' }}>
-                <h4 style={{ marginBottom: '16px', color: 'var(--brown)' }}>Promo Code Configuration</h4>
+              <div className="admin-settings-section">
+                <h4 style={{ marginBottom: '16px', color: '#FFFFFF' }}>Promo Code Configuration</h4>
                 <form onSubmit={handleSavePromo}>
                   <div className="form-group" style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontWeight: 600 }}>Enable Promo Code?</label>
@@ -750,6 +778,55 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <button type="submit" className="btn btn-primary" style={{ marginTop: '16px' }}>Save Promo Settings</button>
+                </form>
+              </div>
+
+              <div className="admin-settings-section" style={{ marginTop: '24px' }}>
+                <h4 style={{ marginBottom: '16px', color: '#FFFFFF' }}>Pickup Location & Hours Notice</h4>
+                <form onSubmit={handleSavePickup}>
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
+                    <label>Pickup Branch Address *</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="e.g. The Cookie Concept Bakery Branch, New Cairo, Cairo, Egypt" 
+                      value={pickupForm.address} 
+                      onChange={e => setPickupForm({...pickupForm, address: e.target.value})} 
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '16px' }}>
+                    <label>Google Maps Location URL *</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="Paste Google Maps link (e.g. https://www.google.com/maps/place/30.0444,31.2357)" 
+                      value={pickupForm.mapUrl || ''} 
+                      onChange={e => {
+                        const urlVal = e.target.value;
+                        const parsed = parseGoogleMapsUrl(urlVal);
+                        setPickupForm({
+                          ...pickupForm,
+                          mapUrl: urlVal,
+                          lat: parsed.lat,
+                          lng: parsed.lng
+                        });
+                      }} 
+                    />
+                    <div style={{ fontSize: '0.8rem', color: 'var(--pink-light)', marginTop: '6px' }}>
+                      📍 Automatically Extracted Map Coordinates: <strong>{pickupForm.lat}, {pickupForm.lng}</strong>
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ marginTop: '16px' }}>
+                    <label>Pickup Timing Notice *</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={pickupForm.hoursNotice} 
+                      onChange={e => setPickupForm({...pickupForm, hoursNotice: e.target.value})} 
+                      placeholder="e.g. Next day from 12:00 PM to 8:00 PM only"
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ marginTop: '16px' }}>Save Pickup Location Settings</button>
                 </form>
               </div>
             </div>
@@ -905,25 +982,25 @@ export default function AdminDashboard() {
                       <label>Available Flavors</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
                         {flavors.map((flavor, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'var(--off-white)', padding: '12px', borderRadius: '12px', border: '1px solid var(--pink)' }}>
-                            <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', background: 'var(--pink-light)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px dashed var(--brown-light)' }}
+                          <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'rgba(0, 0, 0, 0.25)', padding: '12px', borderRadius: '12px', border: '1px solid var(--pink)' }}>
+                            <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', background: '#3B2116', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px dashed var(--pink)' }}
                               onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
                               {flavor.image ? (
                                 <img src={resolveImageUrl(flavor.image)} alt={flavor.name || 'Flavor'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : (
-                                <ImageIcon size={18} color="var(--brown-light)" />
+                                <ImageIcon size={18} color="var(--pink)" />
                               )}
                             </div>
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               <input type="text" placeholder={`Flavor ${idx + 1} name`} value={flavor.name}
                                 onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], name: e.target.value }; setFlavors(u); }}
-                                style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem' }} />
+                                style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem', background: '#3B2116', color: '#FFFFFF' }} />
                               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--brown-light)', whiteSpace: 'nowrap' }}>+ EGP</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--pink-light)', whiteSpace: 'nowrap' }}>+ EGP</span>
                                 <input type="number" placeholder="Surcharge" min="0" step="0.01" value={flavor.price || ''}
                                   onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setFlavors(u); }}
-                                  style={{ width: '90px', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem' }} />
-                                <button type="button" style={{ fontSize: '0.7rem', color: 'var(--brown-light)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                  style={{ width: '90px', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem', background: '#3B2116', color: '#FFFFFF' }} />
+                                <button type="button" style={{ fontSize: '0.7rem', color: 'var(--pink)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                   onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
                                   {flavor.image ? 'Change img' : 'Upload img'}
                                 </button>
@@ -1137,26 +1214,26 @@ export default function AdminDashboard() {
             {!editingCategory && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '1rem', color: 'var(--brown)', margin: 0 }}>Current Categories</h3>
+                  <h3 style={{ fontSize: '1rem', color: '#FFFFFF', margin: 0 }}>Current Categories</h3>
                   <button onClick={() => { setEditingCategory({ id: '', name: '', hasDescription: true, flavorType: 'none', sizeType: 'none', isBoxBuilder: false }); setCategoryForm({ id: '', name: '', hasDescription: true, flavorType: 'none', sizeType: 'none', isBoxBuilder: false }); }} className="btn btn-sm btn-secondary">
                     + New Category
                   </button>
                 </div>
-                <div style={{ background: 'var(--off-white)', borderRadius: '12px', padding: '12px' }}>
+                <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: '12px', padding: '12px', border: '1px solid rgba(243, 195, 206, 0.2)' }}>
                   {categories.map(cat => (
-                    <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(99,61,45,0.1)' }}>
+                    <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(243, 195, 206, 0.15)' }}>
                       <div>
-                        <div style={{ fontWeight: 600, color: 'var(--brown)', fontSize: '0.9rem' }}>{cat.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--brown-light)' }}>
+                        <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '0.9rem' }}>{cat.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--pink-light)' }}>
                           Flavors: {cat.flavorType} | Sizes: {cat.sizeType}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => { setEditingCategory(cat); setCategoryForm(cat); }} style={{ background: 'none', border: 'none', color: 'var(--pink-dark)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}>Edit</button>
+                        <button onClick={() => { setEditingCategory(cat); setCategoryForm(cat); }} style={{ background: 'none', border: 'none', color: 'var(--pink)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}>Edit</button>
                         {['cookie', 'cake', 'item'].includes(cat.id) ? (
-                          <span style={{ fontSize: '0.7rem', color: '#999' }}>Default</span>
+                          <span style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.5)' }}>Default</span>
                         ) : (
-                          <button onClick={() => { if(confirm('Are you sure you want to delete this category?')) deleteCategory(cat.id); }} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}>Delete</button>
+                          <button onClick={() => { if(confirm('Are you sure you want to delete this category?')) deleteCategory(cat.id); }} style={{ background: 'none', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}>Delete</button>
                         )}
                       </div>
                     </div>

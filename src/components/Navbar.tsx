@@ -48,7 +48,7 @@ export default function Navbar() {
 
         <Link href="/" className="nav-logo">
           <div style={{ width: '180px', height: '180px', position: 'relative' }}>
-            <Image src="/images/logo-new.png" alt="The Cookie Concept Logo" fill style={{ objectFit: 'contain' }} unoptimized={true} />
+            <Image src="/images/logo-new.png" alt="The Cookie Concept Logo" fill style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)' }} unoptimized={true} />
           </div>
         </Link>
 
