@@ -211,8 +211,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [heroImage, setHeroImage] = useState<string>('/images/preview.png');
-  const [heroRotationEnabled, setHeroRotationEnabled] = useState<boolean>(true);
+  const [heroImage, setHeroImage] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const savedHero = localStorage.getItem('tcc_hero_image');
+      if (savedHero) return savedHero;
+    }
+    return '/images/preview.png';
+  });
+  const [heroRotationEnabled, setHeroRotationEnabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const savedRot = localStorage.getItem('tcc_hero_rotation');
+      if (savedRot !== null) {
+        try { return JSON.parse(savedRot); } catch (e) {}
+      }
+    }
+    return true;
+  });
   const [promoSettings, setPromoSettings] = useState<PromoCode | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [pickupSettings, setPickupSettings] = useState<PickupSettings>(defaultPickupSettings);
@@ -234,9 +248,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (savedCategories) setCategories(JSON.parse(savedCategories));
     else setCategories(defaultCategories);
 
-    // Load cached hero image if available
+    // Load cached hero image & rotation if available
     const savedHero = localStorage.getItem('tcc_hero_image');
     if (savedHero) setHeroImage(savedHero);
+
+    const savedRot = localStorage.getItem('tcc_hero_rotation');
+    if (savedRot !== null) {
+      try { setHeroRotationEnabled(JSON.parse(savedRot)); } catch (e) {}
+    }
 
     // Load cached pickup settings
     const savedPickup = localStorage.getItem('tcc_pickup_settings');
@@ -565,6 +584,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateHeroRotation = async (enabled: boolean) => {
     await setDoc(doc(db, 'settings', 'homepage'), { heroRotationEnabled: enabled }, { merge: true });
     setHeroRotationEnabled(enabled);
+    try { localStorage.setItem('tcc_hero_rotation', JSON.stringify(enabled)); } catch (e) {}
   };
 
   const updatePromoSettings = async (promo: PromoCode) => {

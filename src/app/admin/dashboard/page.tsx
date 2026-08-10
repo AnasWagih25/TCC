@@ -9,6 +9,7 @@ import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore'
 import { storage, db } from '@/lib/firebase';
 import { useCart, Product, Order, Flavor, resolveImageUrl, Category, parseGoogleMapsUrl } from '@/context/CartContext';
 import { Cookie, TrendingUp, Package, Image as ImageIcon, RefreshCw, Plus, Trash2 } from 'lucide-react';
+import OptimizedImage from '@/components/OptimizedImage';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 
@@ -700,7 +701,9 @@ export default function AdminDashboard() {
                 ) : (
                   products.map((p, index) => (
                     <div key={p.id} className="admin-product-card">
-                      <img src={resolveImageUrl(p.image)} alt={p.name} className="admin-product-img" />
+                      <div style={{ position: 'relative', width: '90px', height: '90px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
+                        <OptimizedImage src={p.image} alt={p.name} fill sizes="90px" />
+                      </div>
                       <div className="admin-product-info">
                         <h4>
                           {p.name} 
@@ -762,19 +765,23 @@ export default function AdminDashboard() {
                     border: '1.5px solid rgba(243,195,206,0.3)',
                     flexWrap: 'wrap'
                   }}>
-                    <img
-                      src={resolveImageUrl(heroImage)}
-                      alt="Current Hero Cookie"
-                      style={{
-                        width: '120px',
-                        height: '120px',
-                        objectFit: 'cover',
-                        borderRadius: '16px',
-                        border: '2.5px solid var(--pink)',
-                        boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
-                        flexShrink: 0
-                      }}
-                    />
+                    <div style={{
+                      position: 'relative',
+                      width: '120px',
+                      height: '120px',
+                      borderRadius: '16px',
+                      border: '2.5px solid var(--pink)',
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                      flexShrink: 0,
+                      overflow: 'hidden'
+                    }}>
+                      <OptimizedImage
+                        src={heroImage}
+                        alt="Current Hero Cookie"
+                        fill
+                        sizes="120px"
+                      />
+                    </div>
                     <div style={{ flex: 1, minWidth: '240px' }}>
                       <div style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>
                         Current Active Hero Image

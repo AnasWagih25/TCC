@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Cookie, Minus, Plus, Package, X, ShoppingCart, AlertCircle } from 'lucide-react';
 import { useCart, resolveImageUrl, type BoxFlavorSelection, type Product } from '@/context/CartContext';
 import ProductImageSlider from '@/components/ProductImageSlider';
+import OptimizedImage from '@/components/OptimizedImage';
 
 export default function Shop() {
   const { products, addToCart, addBoxToCart, categories, orders } = useCart();
@@ -267,8 +268,8 @@ export default function Shop() {
               </button>
               {/* Hero image */}
               <div style={{ width: '100%', height: 'clamp(200px, 40vw, 300px)', background: 'var(--off-white)', position: 'relative', overflow: 'hidden' }}>
-                <img src={resolveImageUrl(p.image)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'none' }} />
-                <div style={{ position: 'absolute', bottom: '12px', left: '12px' }}>
+                <OptimizedImage src={p.image} alt={p.name} fill sizes="(max-width: 768px) 100vw, 480px" />
+                <div style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 5 }}>
                   {isOut ? (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: '50px', background: 'rgba(231,76,60,0.9)', color: '#fff', fontSize: '0.78rem', fontWeight: 600, backdropFilter: 'blur(4px)' }}><AlertCircle size={14} /> Sold Out</span>
                   ) : isLow ? (
@@ -384,8 +385,8 @@ export default function Shop() {
               <div className="modal-body">
                 {/* Product image */}
                 {p.image && (
-                  <div style={{ width: '100%', height: 'clamp(120px, 25vw, 180px)', borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', background: 'var(--off-white)' }}>
-                    <img src={resolveImageUrl(p.image)} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'none' }} />
+                  <div style={{ width: '100%', height: 'clamp(120px, 25vw, 180px)', borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', background: 'var(--off-white)', position: 'relative' }}>
+                    <OptimizedImage src={p.image} alt={p.name} fill sizes="(max-width: 768px) 100vw, 600px" />
                   </div>
                 )}
 
@@ -469,8 +470,9 @@ export default function Shop() {
                             transition: '0.2s',
                           }}>
                             {flavor.image && (
-                              <img src={resolveImageUrl(flavor.image)} alt={flavor.name}
-                                style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover', flexShrink: 0, transform: 'none' }} />
+                              <div style={{ width: '38px', height: '38px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
+                                <OptimizedImage src={flavor.image} alt={flavor.name} fill sizes="38px" />
+                              </div>
                             )}
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

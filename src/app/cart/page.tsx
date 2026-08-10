@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Trash2 } from 'lucide-react';
 import { useCart, resolveImageUrl } from '@/context/CartContext';
+import OptimizedImage from '@/components/OptimizedImage';
 
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart } = useCart();
@@ -63,7 +64,9 @@ export default function Cart() {
                 <div className="cart-items">
                   {cart.map((item, index) => (
                     <div key={`${item.id}-${index}`} className="cart-item">
-                      <img src={resolveImageUrl(item.image)} alt={item.name} className="cart-item-img" />
+                      <div style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
+                        <OptimizedImage src={item.image} alt={item.name} fill sizes="70px" />
+                      </div>
                       <div className="cart-item-details">
                         <h4 className="cart-item-name">
                           {item.name}

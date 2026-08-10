@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { resolveImageUrl } from '@/context/CartContext';
+import OptimizedImage from '@/components/OptimizedImage';
 
 type ProductImageSliderProps = {
   images: string[];
@@ -11,21 +11,11 @@ type ProductImageSliderProps = {
 
 export default function ProductImageSlider({ images, alt }: ProductImageSliderProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [loadedIndices, setLoadedIndices] = useState<Record<number, boolean>>({ 0: true });
 
-  const prevSlide = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const isFirstSlide = currentIndex === 0;
-    const newIndex = isFirstSlide ? images.length - 1 : currentIndex - 1;
+  const handleIndexChange = (newIndex: number) => {
     setCurrentIndex(newIndex);
-  };
-
-  const nextSlide = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const isLastSlide = currentIndex === images.length - 1;
-    const newIndex = isLastSlide ? 0 : currentIndex + 1;
-    setCurrentIndex(newIndex);
+    setLoadedIndices(prev => ({ ...prev, [newIndex]: true }));
   };
 
   const validImages = images ? images.filter(img => img && typeof img === 'string' && img.trim() !== '') : [];
@@ -33,24 +23,35 @@ export default function ProductImageSlider({ images, alt }: ProductImageSliderPr
   if (validImages.length === 0) return null;
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {validImages.map((image, index) => (
-        <div 
-          key={index} 
-          style={{ 
-            opacity: index === currentIndex ? 1 : 0, 
-            transition: 'opacity 0.3s ease-in-out',
-            position: index === 0 ? 'relative' : 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            zIndex: index === currentIndex ? 1 : 0
-          }}
-        >
-          <img src={resolveImageUrl(image)} alt={`${alt} - view ${index + 1}`} loading="lazy" />
-        </div>
-      ))}
+    <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+      {validImages.map((image, index) => {
+        // Only render DOM element if active or previously visited
+        if (!loadedIndices[index] && index !== currentIndex) return null;
+
+        return (
+          <div 
+            key={index} 
+            style={{ 
+              opacity: index === currentIndex ? 1 : 0, 
+              transition: 'opacity 0.3s ease-in-out',
+              position: index === 0 ? 'relative' : 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              zIndex: index === currentIndex ? 1 : 0
+            }}
+          >
+            <OptimizedImage
+              src={image}
+              alt={`${alt} - view ${index + 1}`}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              loading={index === 0 ? 'eager' : 'lazy'}
+            />
+          </div>
+        );
+      })}
       
       {validImages.length > 1 && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', zIndex: 10, pointerEvents: 'none' }}>
@@ -60,7 +61,7 @@ export default function ProductImageSlider({ images, alt }: ProductImageSliderPr
               e.stopPropagation();
               const isFirstSlide = currentIndex === 0;
               const newIndex = isFirstSlide ? validImages.length - 1 : currentIndex - 1;
-              setCurrentIndex(newIndex);
+              handleIndexChange(newIndex);
             }}
             style={{ 
               background: 'rgba(255, 255, 255, 0.8)', 
@@ -85,7 +86,7 @@ export default function ProductImageSlider({ images, alt }: ProductImageSliderPr
               e.stopPropagation();
               const isLastSlide = currentIndex === validImages.length - 1;
               const newIndex = isLastSlide ? 0 : currentIndex + 1;
-              setCurrentIndex(newIndex);
+              handleIndexChange(newIndex);
             }}
             style={{ 
               background: 'rgba(255, 255, 255, 0.8)', 

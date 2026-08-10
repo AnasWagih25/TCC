@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Star, ChefHat, Truck, Cookie } from 'lucide-react';
 import { useCart, resolveImageUrl } from '@/context/CartContext';
 import ProductImageSlider from '@/components/ProductImageSlider';
+import OptimizedImage from '@/components/OptimizedImage';
 
 export default function Home() {
   const router = useRouter();
@@ -34,9 +35,12 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-image-presentation" style={{ position: 'relative', zIndex: 10 }}>
-            <img 
-              src={resolveImageUrl(heroImage)} 
+            <OptimizedImage 
+              src={heroImage} 
               alt="Premium Artisan Cookie" 
+              priority={true}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
               className={`hero-cookie-premium ${heroRotationEnabled ? 'rotate-360-slow' : ''}`} 
               style={heroRotationEnabled ? undefined : { transform: 'rotate(15deg)' }} 
             />
