@@ -267,7 +267,7 @@ export default function Shop() {
                 <X size={18} color="var(--brown)" />
               </button>
               {/* Hero image */}
-              <div style={{ width: '100%', height: 'clamp(200px, 40vw, 300px)', background: 'var(--off-white)', position: 'relative', overflow: 'hidden' }}>
+              <div className="modal-hero-img-container" style={{ width: '100%', height: 'clamp(140px, 32vw, 210px)', background: 'var(--off-white)', position: 'relative', overflow: 'hidden' }}>
                 <OptimizedImage src={p.image} alt={p.name} fill sizes="(max-width: 768px) 100vw, 480px" />
                 <div style={{ position: 'absolute', bottom: '12px', left: '12px', zIndex: 5 }}>
                   {isOut ? (
@@ -280,7 +280,7 @@ export default function Shop() {
                 </div>
               </div>
               {/* Content */}
-              <div style={{ padding: '20px 24px 24px' }}>
+              <div className="modal-body-content" style={{ padding: '16px 18px 18px' }}>
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: '#FFFFFF', margin: '0 0 6px', lineHeight: 1.2 }}>{p.name}</h2>
                 {cat?.flavorType === 'single' && p.flavor ? (
                   <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--pink)', fontSize: '0.9rem', margin: '0 0 16px', fontStyle: 'italic' }}><Cookie size={14} /> {p.flavor}</p>

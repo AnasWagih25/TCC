@@ -979,9 +979,9 @@ select {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(74, 45, 32, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(15, 8, 4, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   z-index: 2000;
   display: flex;
   align-items: center;
@@ -1008,8 +1008,9 @@ select {
   transform: translateY(20px) scale(0.97);
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow:
-    0 24px 80px rgba(99, 61, 45, 0.22),
-    0 8px 24px rgba(99, 61, 45, 0.08);
+    0 30px 90px rgba(0, 0, 0, 0.75),
+    0 10px 30px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.15);
   position: relative;
   overflow: hidden;
 }
@@ -1815,6 +1816,12 @@ select {
     gap: 20px;
   }
 
+  .footer-grid > * {
+    flex: 0 0 auto;
+    flex-basis: auto;
+    min-height: 0;
+  }
+
   .order-details {
     flex-direction: column;
   }
@@ -1842,15 +1849,16 @@ select {
 
   .mobile-nav-links {
     position: fixed;
-    top: 78px;
+    top: max(78px, calc(70px + env(safe-area-inset-top)));
     left: 12px;
     right: 12px;
-    background: var(--white);
+    background: var(--card-brown);
+    color: #FFFFFF;
     display: flex;
     flex-direction: column;
     gap: 6px;
     list-style: none;
-    padding: 10px;
+    padding: 10px 10px max(10px, env(safe-area-inset-bottom));
     border-radius: 16px;
     box-shadow: 0 10px 28px rgba(99, 61, 45, 0.14);
     transform: translateY(-16px);
@@ -1859,6 +1867,9 @@ select {
     pointer-events: none;
     transition: var(--transition);
     z-index: 1005;
+    max-height: calc(100dvh - max(100px, calc(90px + env(safe-area-inset-top))));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .mobile-nav-links.open {
@@ -1877,18 +1888,31 @@ select {
   }
 
   .nav-container {
-    height: 74px;
+    height: 76px;
     padding-left: 14px;
     padding-right: 14px;
   }
 
   .nav-logo > div {
-    width: 104px !important;
-    height: 104px !important;
+    width: 144px !important;
+    height: 44px !important;
   }
 
   .menu-toggle {
-    right: 14px !important;
+    right: max(14px, env(safe-area-inset-right)) !important;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal-close {
+    width: 44px !important;
+    height: 44px !important;
+    top: 18px !important;
+    right: 18px !important;
   }
 
   .hero {
@@ -2235,8 +2259,8 @@ select {
   }
 
   .nav-logo > div {
-    width: 92px !important;
-    height: 92px !important;
+    width: 120px !important;
+    height: 36px !important;
   }
 
   .hero-buttons {

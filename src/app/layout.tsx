@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Outfit, Fredoka } from "next/font/google";
 import "./globals.css";
 import "./redesign.css";
@@ -11,15 +11,17 @@ import { AuthProvider } from "@/context/AuthContext";
 const outfit = Outfit({ subsets: ["latin"], variable: '--font-outfit' });
 const fredoka = Fredoka({ subsets: ["latin"], variable: '--font-fredoka' });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+};
+
 export const metadata: Metadata = {
   title: "The Cookie Concept",
   description: "Artisan cookies baked with love. Order online for delivery.",
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    viewportFit: 'cover',
-  },
 };
 
 export default function RootLayout({

@@ -85,12 +85,22 @@ export default function CheckoutPage() {
   }, [location]);
 
   const handleApplyPromo = () => {
+    const inputCode = promoCodeInput.trim().toUpperCase();
+    
+    // Secret Quirk easter egg promo code (5% off)
+    if (inputCode === 'QUIRK') {
+      const discount = (subtotal * 5) / 100;
+      setAppliedDiscount(discount);
+      setPromoMessage({ text: `🎉 Secret Quirk code applied! You saved 5% (EGP ${discount.toFixed(2)})`, type: 'success' });
+      return;
+    }
+
     if (!promoSettings || !promoSettings.isActive) {
       setPromoMessage({ text: 'No active promo code available.', type: 'error' });
       setAppliedDiscount(0);
       return;
     }
-    if (promoCodeInput.trim().toUpperCase() === promoSettings.code.toUpperCase()) {
+    if (inputCode === promoSettings.code.toUpperCase()) {
       const discount = Math.min((subtotal * promoSettings.discountPercentage) / 100, promoSettings.maxCap);
       setAppliedDiscount(discount);
       setPromoMessage({ text: `Promo applied! You saved EGP ${discount.toFixed(2)}`, type: 'success' });

@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Footer() {
   return (
@@ -7,21 +8,16 @@ export default function Footer() {
       <div className="footer-container">
         <div className="footer-grid">
           <div className="footer-brand">
-            <div style={{ 
-              width: '200px', 
-              height: '100px', 
-              marginBottom: '16px',
-              backgroundColor: 'var(--white)',
-              maskImage: 'url(/images/logo-new.png)',
-              maskSize: 'contain',
-              maskRepeat: 'no-repeat',
-              maskPosition: 'left center',
-              WebkitMaskImage: 'url(/images/logo-new.png)',
-              WebkitMaskSize: 'contain',
-              WebkitMaskRepeat: 'no-repeat',
-              WebkitMaskPosition: 'left center'
-            }} aria-label="The Cookie Concept Logo" />
-            <p style={{ fontSize: '1.1rem', fontWeight: 500, color: '#FAF5EF' }}>Artisan cookies baked fresh daily in town. Experience perfection in every bite.</p>
+            <div className="footer-logo-wrapper" style={{ width: '200px', height: '60px', position: 'relative', marginBottom: '16px' }}>
+              <Image 
+                src="/images/logo-new.png" 
+                alt="The Cookie Concept Logo" 
+                fill 
+                style={{ objectFit: 'contain', objectPosition: 'left center', filter: 'brightness(0) invert(1)' }} 
+                unoptimized={true} 
+              />
+            </div>
+            <p className="footer-brand-text" style={{ fontSize: '1.1rem', fontWeight: 500, color: '#FAF5EF' }}>Artisan cookies baked fresh daily in town. Experience perfection in every bite.</p>
           </div>
           <div className="footer-col">
             <h4>Quick Links</h4>

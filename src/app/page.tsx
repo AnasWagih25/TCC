@@ -1,11 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Star, ChefHat, Truck, Cookie } from 'lucide-react';
-import { useCart, resolveImageUrl } from '@/context/CartContext';
+import { Star, ChefHat, Truck, Cookie, Sparkles, Copy, Check, X } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 import ProductImageSlider from '@/components/ProductImageSlider';
 import OptimizedImage from '@/components/OptimizedImage';
 
@@ -13,6 +12,24 @@ export default function Home() {
   const router = useRouter();
   const { products, heroImage, heroRotationEnabled } = useCart();
   const featuredProducts = products.slice(0, 3);
+  const [showSecretQuirkModal, setShowSecretQuirkModal] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const handleCookieClick = () => {
+    setShowSecretQuirkModal(true);
+  };
+
+  const handleCopyCode = () => {
+    if (typeof window !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText('Quirk');
+    }
+    setCopiedCode(true);
+    setTimeout(() => {
+      setCopiedCode(false);
+      setShowSecretQuirkModal(false);
+      router.push('/shop');
+    }, 1200);
+  };
 
   return (
     <div className="page active" id="homePage">
@@ -22,7 +39,7 @@ export default function Home() {
         <div className="hero-container">
           <div className="hero-text" style={{ position: 'relative', zIndex: 10 }}>
             <div className="hero-badge" style={{ backgroundColor: 'var(--pink)', color: 'var(--brown)', padding: '8px 20px', borderRadius: '50px', letterSpacing: '1px', fontWeight: 700 }}>Freshly Baked Daily</div>
-            <h1 className="hero-title" style={{ fontSize: 'clamp(4rem, 8vw, 6.5rem)', lineHeight: 0.9, color: '#FFFFFF' }}>
+            <h1 className="hero-title" style={{ fontSize: 'clamp(3.5rem, 7.5vw, 6.5rem)', lineHeight: 0.95, color: '#FFFFFF' }}>
               BAKING <br />
               <span style={{ color: 'var(--pink)' }}>ENDLESS</span><br />
               HAPPINESS
@@ -35,16 +52,24 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-image-presentation" style={{ position: 'relative', zIndex: 10 }}>
-            <OptimizedImage 
-              src={heroImage} 
-              alt="Premium Artisan Cookie" 
-              priority={true}
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className={`hero-cookie-premium ${heroRotationEnabled ? 'rotate-360-slow' : ''}`} 
-              style={heroRotationEnabled ? undefined : { transform: 'rotate(15deg)' }} 
-            />
-            <div className="sticker" style={{ background: '#FFFFFF', color: 'var(--brown)', position: 'absolute', bottom: '10%', right: '12%', transform: 'rotate(-5deg)', width: '110px', height: '110px', fontSize: '1.1rem', zIndex: 20 }}>LOVE AT<br />FIRST<br />BITE</div>
+            <div 
+              className={`hero-cookie-wrapper ${heroRotationEnabled ? 'rotate-360-slow' : ''}`}
+              onClick={handleCookieClick}
+              style={{ cursor: 'pointer' }}
+              title="Click the spinning cookie for a secret!"
+            >
+              <OptimizedImage 
+                src={heroImage} 
+                alt="Premium Artisan Cookie" 
+                priority={true}
+                fill
+                objectFit="contain"
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="hero-cookie-premium"
+                style={heroRotationEnabled ? undefined : { transform: 'rotate(15deg)' }} 
+              />
+            </div>
+            <div className="sticker" style={{ background: '#FFFFFF', color: 'var(--brown)', transform: 'rotate(-5deg)' }}>LOVE AT<br />FIRST<br />BITE</div>
           </div>
         </div>
       </header>
@@ -61,7 +86,7 @@ export default function Home() {
             <div className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF', transform: 'rotate(-1deg)' }}>
               <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}><Star size={28} color="var(--brown)" strokeWidth={2.5} /></div>
               <h3 style={{ fontSize: '1.5rem', color: '#FFFFFF' }}>Premium Ingredients</h3>
-              <p style={{ color: 'var(--pink-light)' }}>Pure & simple. Naturally fresh, nothing artificial. Vibrant goodness in every bite.</p>
+              <p style={{ color: 'var(--pink-light)' }}>Pure &amp; simple. Naturally fresh, nothing artificial. Vibrant goodness in every bite.</p>
             </div>
             <div className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF', transform: 'translateY(16px) rotate(1deg)' }}>
               <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}><ChefHat size={28} color="var(--brown)" strokeWidth={2} /></div>
@@ -128,6 +153,65 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Secret Quirk Easter Egg Modal */}
+      <div className={`modal-overlay ${showSecretQuirkModal ? 'active' : ''}`} onClick={() => setShowSecretQuirkModal(false)}>
+        <div className="modal secret-quirk-modal" onClick={(e) => e.stopPropagation()}>
+          <button 
+            onClick={() => setShowSecretQuirkModal(false)}
+            className="modal-close-btn"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+
+          <div className="secret-quirk-icon">
+            <Sparkles size={36} color="var(--brown)" />
+          </div>
+
+          <h3 className="secret-quirk-title">
+            Shhh... You Found the Secret Quirk! 🍪✨
+          </h3>
+
+          <p className="secret-quirk-desc">
+            Look at you clicking around! Curiosity pays off—here is <strong>5% OFF</strong> your order for finding this secret quirk.
+          </p>
+
+          <div className="secret-quirk-box">
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '0.72rem', color: 'var(--pink-light)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Secret Promo Code</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FFFFFF', fontFamily: 'var(--font-fredoka)' }}>Quirk</div>
+            </div>
+            <button 
+              onClick={handleCopyCode}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '12px',
+                background: copiedCode ? '#2ecc71' : 'var(--pink)',
+                color: copiedCode ? '#FFFFFF' : 'var(--brown)',
+                border: 'none',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {copiedCode ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy Code</>}
+            </button>
+          </div>
+
+          <button 
+            onClick={handleCopyCode}
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '12px 24px', fontSize: '1rem', fontWeight: 700 }}
+          >
+            Claim 5% Off &amp; Order Now 🛒
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
