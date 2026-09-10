@@ -138,10 +138,10 @@ export function cleanForFirestore(obj: any): any {
 }
 
 export const defaultPickupSettings: PickupSettings = {
-  address: 'The Cookie Concept Bakery Branch, New Cairo, Cairo, Egypt',
-  lat: 30.0444,
-  lng: 31.2357,
-  mapUrl: 'https://www.google.com/maps/search/?api=1&query=30.0444,31.2357',
+  address: 'The Cookie Concept Bakery Branch, Second New Cairo, Cairo, Egypt',
+  lat: 30.0450,
+  lng: 31.4800,
+  mapUrl: 'https://www.google.com/maps/search/?api=1&query=30.0450,31.4800',
   hoursNotice: 'Next day from 12:00 PM to 8:00 PM only',
 };
 

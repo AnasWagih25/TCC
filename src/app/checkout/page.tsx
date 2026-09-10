@@ -25,6 +25,7 @@ export default function CheckoutPage() {
   });
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [deliveryZoneName, setDeliveryZoneName] = useState<string>('');
   const [isDeliverable, setIsDeliverable] = useState<boolean>(true);
   
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -54,33 +55,36 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!location) return;
 
-    // Delivery zones (70 - 100 EGP depending on location)
-    const zones = [
-      { name: 'Dokki & Central Giza', lat: 30.0380, lng: 31.2100, radius: 20, fee: 70 },
-      { name: 'Old Cairo & Southern Giza', lat: 30.0100, lng: 31.2300, radius: 25, fee: 75 },
-      { name: '5th Settlement & New Cairo', lat: 30.0050, lng: 31.4250, radius: 30, fee: 80 },
-      { name: 'Sheikh Zayed, October & Western Giza', lat: 30.0450, lng: 29.9880, radius: 40, fee: 90 },
-      { name: 'New Capital & Eastern Borders', lat: 29.9870, lng: 31.7400, radius: 45, fee: 100 },
-      { name: 'Greater Cairo & Surrounding Borders', lat: 30.0444, lng: 31.2357, radius: 60, fee: 85 }
-    ];
+    // Dispatch Origin: Second New Cairo (القاهرة الجديدة ثان)
+    const DISPATCH_ORIGIN = { lat: 30.0450, lng: 31.4800 };
+    const distance = getDistanceFromLatLonInKm(location.lat, location.lng, DISPATCH_ORIGIN.lat, DISPATCH_ORIGIN.lng);
 
-    let foundFee = -1; // -1 indicates out of bounds
-    let minDistance = Infinity;
-
-    for (const zone of zones) {
-      const distance = getDistanceFromLatLonInKm(location.lat, location.lng, zone.lat, zone.lng);
-      if (distance <= zone.radius && distance < minDistance) {
-        minDistance = distance;
-        foundFee = zone.fee;
-      }
-    }
-
-    if (foundFee === -1) {
+    // Distance-based fee starting from Second New Cairo:
+    // 70 EGP in close proximity, up to 100 EGP for further locations
+    if (distance <= 14) {
+      // Close proximity: Second New Cairo, Al Rehab, 1st & 5th Settlement, Tagamoa, Lotus, Beit El Watan
+      setIsDeliverable(true);
+      setDeliveryFee(70);
+      setDeliveryZoneName('Close Proximity');
+    } else if (distance <= 25) {
+      // Mid distance: Madinaty, El Shorouk, Nasr City, Heliopolis, Maadi, New Capital
+      setIsDeliverable(true);
+      setDeliveryFee(80);
+      setDeliveryZoneName('Mid Distance');
+    } else if (distance <= 36) {
+      // Farther distance: Downtown Cairo, Zamalek, Dokki, Mohandessin, Central Giza, Haram
+      setIsDeliverable(true);
+      setDeliveryFee(90);
+      setDeliveryZoneName('Central Cairo & Giza');
+    } else if (distance <= 65) {
+      // Furthest distance: Sheikh Zayed, 6th of October, October Gardens, Outer Borders
+      setIsDeliverable(true);
+      setDeliveryFee(100);
+      setDeliveryZoneName('Western Giza, Zayed & October');
+    } else {
       setIsDeliverable(false);
       setDeliveryFee(0);
-    } else {
-      setIsDeliverable(true);
-      setDeliveryFee(foundFee);
+      setDeliveryZoneName('');
     }
   }, [location]);
 
@@ -242,7 +246,7 @@ export default function CheckoutPage() {
                   <Truck size={22} color="var(--pink)" /> Regular Delivery
                 </div>
                 <div style={{ fontSize: '0.82rem', color: 'var(--pink-light)', lineHeight: 1.4, opacity: 0.9 }}>
-                  70 - 100 EGP depending on location · Confirmed after ordering
+                  70 EGP (close proximity) to 100 EGP (further areas) · Dispatched from Second New Cairo
                 </div>
               </button>
 
@@ -371,10 +375,10 @@ export default function CheckoutPage() {
                 color: '#FFFFFF'
               }}>
                 <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--pink)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Truck size={18} color="var(--pink)" /> Regular Delivery Information:
+                  <Truck size={18} color="var(--pink)" /> Regular Delivery from Second New Cairo:
                 </div>
                 <div style={{ fontSize: '0.88rem', lineHeight: 1.5, color: '#FFFFFF', opacity: 0.95 }}>
-                  Delivery fee ranges from <strong>70 to 100 EGP</strong> depending on your location. The exact fee and delivery timing will be confirmed with you after placing your order.
+                  Orders are dispatched from our bakery in <strong>Second New Cairo</strong>. Delivery fee is <strong>70 EGP</strong> in close proximity and scales up to <strong>100 EGP</strong> for further locations (confirmed with you after ordering).
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -501,12 +505,16 @@ export default function CheckoutPage() {
                   <strong style={{ color: '#2ecc71' }}>FREE Pickup (0 EGP)</strong>
                 ) : location ? (
                   isDeliverable ? (
-                    <strong style={{ color: 'var(--pink)' }}>EGP {deliveryFee.toFixed(2)} (Confirmed after ordering)</strong>
+                    <strong style={{ color: 'var(--pink)' }}>
+                      EGP {deliveryFee.toFixed(2)} {deliveryZoneName ? `(${deliveryZoneName})` : ''} · Confirmed after ordering
+                    </strong>
                   ) : (
                     <span style={{ color: '#ffaaaa' }}>Unavailable Location</span>
                   )
                 ) : (
-                  <span style={{ fontSize: '0.88rem', color: 'var(--pink-light)', fontStyle: 'italic' }}>EGP 70 - 100 (Pin map to calculate)</span>
+                  <span style={{ fontSize: '0.88rem', color: 'var(--pink-light)', fontStyle: 'italic' }}>
+                    EGP 70 - 100 (Pin map to calculate from Second New Cairo)
+                  </span>
                 )}
               </span>
             </div>

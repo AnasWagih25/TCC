@@ -116,7 +116,7 @@ export default function Cart() {
 
                   <div className="summary-row">
                     <span>Delivery</span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--pink-light)' }}>EGP 70 - 100 (Calculated at checkout)</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--pink-light)' }}>EGP 70 - 100 (Dispatched from Second New Cairo)</span>
                   </div>
                   <div style={{
                     display: 'flex',
@@ -144,7 +144,7 @@ export default function Cart() {
                       fontWeight: 800,
                       flexShrink: 0,
                     }}>!</span>
-                    <span style={{ fontWeight: 600 }}>Next-day delivery (70 - 100 EGP depending on location)</span>
+                    <span style={{ fontWeight: 600 }}>Next-day delivery (70 EGP close proximity, up to 100 EGP)</span>
                   </div>
                   <div style={{
                     display: 'flex',
