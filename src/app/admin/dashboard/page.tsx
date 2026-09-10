@@ -582,6 +582,15 @@ export default function AdminDashboard() {
                                 Manual Sale
                               </span>
                             )}
+                            <span style={{ 
+                              marginLeft: '8px', fontSize: '0.72rem', 
+                              background: o.deliveryMethod === 'pickup' ? '#2ecc71' : 'var(--pink)', 
+                              color: o.deliveryMethod === 'pickup' ? '#ffffff' : 'var(--brown)', 
+                              padding: '3px 8px', borderRadius: '999px', 
+                              fontFamily: '"Inter", sans-serif', fontWeight: 600 
+                            }}>
+                              {o.deliveryMethod === 'pickup' ? '🛍️ Pickup' : '🚗 Regular Delivery'}
+                            </span>
                           </div>
                           <span className={`order-status status-${o.status}`}>{isPending ? 'Pending' : 'Fulfilled'}</span>
                         </div>
@@ -642,7 +651,7 @@ export default function AdminDashboard() {
                           ))}
                           <div className="order-product-row" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #ccc' }}>
                             <span>Delivery Fee</span>
-                            <span>EGP {o.deliveryFee?.toFixed(2) || '70.00'}</span>
+                            <span>{o.deliveryMethod === 'pickup' ? 'FREE (Pickup)' : `EGP ${(o.deliveryFee !== undefined && o.deliveryFee !== null ? o.deliveryFee : 70).toFixed(2)}`}</span>
                           </div>
                           {o.discount && o.discount > 0 ? (
                             <div className="order-product-row" style={{ marginTop: '5px', color: '#2ecc71', fontWeight: 600 }}>

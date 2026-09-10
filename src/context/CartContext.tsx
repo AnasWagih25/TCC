@@ -149,7 +149,7 @@ export type Order = {
   id: string;
   date: string;
   source?: 'web' | 'manual';
-  deliveryMethod?: 'uber' | 'pickup';
+  deliveryMethod?: 'delivery' | 'pickup';
   customer: {
     name: string;
     phone: string;
@@ -187,7 +187,7 @@ type CartContextType = {
   addBoxToCart: (productId: string, boxSize: number, selections: BoxFlavorSelection[], selectedCustomizations?: { name: string; price: number; text?: string }[]) => { success: boolean; message: string };
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
   removeFromCart: (index: number) => void;
-  placeOrder: (customerInfo: any, deliveryFee?: number, discount?: number, deliveryMethod?: 'uber' | 'pickup') => Promise<Order>;
+  placeOrder: (customerInfo: any, deliveryFee?: number, discount?: number, deliveryMethod?: 'delivery' | 'pickup') => Promise<Order>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (index: number) => Promise<void>;
   updateHeroImage: (url: string) => Promise<void>;
@@ -507,7 +507,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(newCart);
   };
 
-  const placeOrder = async (customerInfo: any, deliveryFee: number = 0, discount: number = 0, deliveryMethod: 'uber' | 'pickup' = 'uber') => {
+  const placeOrder = async (customerInfo: any, deliveryFee: number = 70, discount: number = 0, deliveryMethod: 'delivery' | 'pickup' = 'delivery') => {
     const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
     
     let subtotal = 0;

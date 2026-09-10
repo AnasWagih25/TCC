@@ -88,19 +88,19 @@ export async function POST(req: Request) {
           <!-- Fulfillment & Payment Badge Card -->
           <div style="background-color: ${isPickup ? '#E8F8F5' : '#FDF2E9'}; border: 2px solid ${isPickup ? '#2ECC71' : '#E67E22'}; border-radius: 12px; padding: 18px; margin-bottom: 24px;">
             <div style="font-size: 16px; font-weight: bold; color: ${isPickup ? '#27AE60' : '#D35400'}; margin-bottom: 8px;">
-              ${isPickup ? '🛍️ Fulfillment: Pickup (Next Day 12:00 PM - 8:00 PM)' : '🚗 Fulfillment: Uber Delivery'}
+              ${isPickup ? '🛍️ Fulfillment: Pickup (Next Day 12:00 PM - 8:00 PM)' : '🚗 Fulfillment: Regular Delivery (Next Day)'}
             </div>
             
             <div style="font-size: 14px; margin-bottom: 6px; color: #633D2D;">
               <strong>Payment Method:</strong> 
-              <span style="font-weight: bold; color: ${isPickup ? '#27AE60' : '#C0392B'};">
-                ${isPickup ? 'Cash on Pickup or Instapay / Telda' : 'Instapay or Telda ONLY (No Cash)'}
+              <span style="font-weight: bold; color: ${isPickup ? '#27AE60' : '#633D2D'};">
+                ${isPickup ? 'Cash on Pickup or Instapay / Telda' : 'Cash on Delivery or Instapay / Telda'}
               </span>
             </div>
 
             <div style="font-size: 14px; color: #633D2D;">
               <strong>Delivery Fee Status:</strong> 
-              ${isPickup ? 'FREE Pickup (0 EGP)' : 'Determined at delivery time via Uber fare'}
+              ${isPickup ? 'FREE Pickup (0 EGP)' : `EGP ${(orderData.deliveryFee || 70).toFixed(2)} (70–100 EGP, confirmed after ordering)`}
             </div>
           </div>
 
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
           <div style="margin-top: 24px; padding: 20px; background-color: #FDE8EC; border-radius: 12px; text-align: right;">
             <p style="margin: 4px 0; font-size: 14px; color: #7A5243;"><strong>Items Subtotal:</strong> EGP ${subtotal.toFixed(2)}</p>
             <p style="margin: 4px 0; font-size: 14px; color: #7A5243;">
-              <strong>Delivery Fee:</strong> ${isPickup ? 'FREE (0 EGP)' : `EGP ${(orderData.deliveryFee || 0).toFixed(2)} (Uber Fare)`}
+              <strong>Delivery Fee:</strong> ${isPickup ? 'FREE (0 EGP)' : `EGP ${(orderData.deliveryFee || 70).toFixed(2)} (70–100 EGP, confirmed after ordering)`}
             </p>
             ${orderData.discount ? `<p style="margin: 4px 0; font-size: 14px; color: #27AE60;"><strong>Promo Discount:</strong> - EGP ${orderData.discount.toFixed(2)}</p>` : ''}
             <p style="margin: 10px 0 0; font-size: 20px; color: #633D2D; font-weight: bold; border-top: 1.5px solid #FAD1D9; padding-top: 10px;">
@@ -178,7 +178,7 @@ export async function POST(req: Request) {
     await transporter.sendMail({
       from: `"The Cookie Concept" <${process.env.EMAIL_USER}>`,
       to: TARGET_EMAIL,
-      subject: `New Order Received (${isPickup ? 'Pickup' : 'Uber Delivery'}) - #${orderData.id}`,
+      subject: `New Order Received (${isPickup ? 'Pickup' : 'Regular Delivery'}) - #${orderData.id}`,
       html: htmlContent,
     });
 

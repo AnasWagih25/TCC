@@ -116,7 +116,7 @@ export default function Cart() {
 
                   <div className="summary-row">
                     <span>Delivery</span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--brown-light)' }}>Calculated at checkout</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--pink-light)' }}>EGP 70 - 100 (Calculated at checkout)</span>
                   </div>
                   <div style={{
                     display: 'flex',
@@ -144,7 +144,7 @@ export default function Cart() {
                       fontWeight: 800,
                       flexShrink: 0,
                     }}>!</span>
-                    <span style={{ fontWeight: 600 }}>Next-day delivery</span>
+                    <span style={{ fontWeight: 600 }}>Next-day delivery (70 - 100 EGP depending on location)</span>
                   </div>
                   <div style={{
                     display: 'flex',
@@ -172,11 +172,11 @@ export default function Cart() {
                       fontWeight: 800,
                       flexShrink: 0,
                     }}>$</span>
-                    <span style={{ fontWeight: 600 }}>Payment: Instapay / Telda (Uber) or Cash on Pickup</span>
+                    <span style={{ fontWeight: 600 }}>Payment: Cash on Delivery, Instapay, or Telda</span>
                   </div>
                   <div className="summary-row total">
                     <span>Total</span>
-                    <span style={{ fontSize: '1rem' }}>EGP {subtotal.toFixed(2)} + Delivery</span>
+                    <span style={{ fontSize: '1rem' }}>EGP {subtotal.toFixed(2)} + Delivery (70-100 EGP)</span>
                   </div>
                   <button
                     className="btn btn-primary"

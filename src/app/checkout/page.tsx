@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
-import { ShoppingCart, ClipboardList, FileText, Banknote, Truck, CheckCircle2, Store, Clock, MapPin, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, ClipboardList, FileText, Banknote, Truck, CheckCircle2, Store, Clock, MapPin } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const CheckoutMap = dynamic(() => import('@/components/CheckoutMap'), { 
@@ -15,7 +15,7 @@ export default function CheckoutPage() {
   const { cart, placeOrder, promoSettings, pickupSettings } = useCart();
   const router = useRouter();
 
-  const [deliveryMethod, setDeliveryMethod] = useState<'uber' | 'pickup'>('uber');
+  const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -54,14 +54,14 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!location) return;
 
-    // Delivery zones
+    // Delivery zones (70 - 100 EGP depending on location)
     const zones = [
-      { name: 'New Capital & Eastern Borders', lat: 29.9870, lng: 31.7400, radius: 45, fee: 100 },
-      { name: 'Sheikh Zayed, October & Western Giza', lat: 30.0450, lng: 29.9880, radius: 40, fee: 100 },
-      { name: '5th Settlement & New Cairo', lat: 30.0050, lng: 31.4250, radius: 30, fee: 100 },
+      { name: 'Dokki & Central Giza', lat: 30.0380, lng: 31.2100, radius: 20, fee: 70 },
       { name: 'Old Cairo & Southern Giza', lat: 30.0100, lng: 31.2300, radius: 25, fee: 75 },
-      { name: 'Dokki & Central Giza', lat: 30.0380, lng: 31.2100, radius: 20, fee: 75 },
-      { name: 'Greater Cairo & Surrounding Borders', lat: 30.0444, lng: 31.2357, radius: 60, fee: 100 }
+      { name: '5th Settlement & New Cairo', lat: 30.0050, lng: 31.4250, radius: 30, fee: 80 },
+      { name: 'Sheikh Zayed, October & Western Giza', lat: 30.0450, lng: 29.9880, radius: 40, fee: 90 },
+      { name: 'New Capital & Eastern Borders', lat: 29.9870, lng: 31.7400, radius: 45, fee: 100 },
+      { name: 'Greater Cairo & Surrounding Borders', lat: 30.0444, lng: 31.2357, radius: 60, fee: 85 }
     ];
 
     let foundFee = -1; // -1 indicates out of bounds
@@ -110,13 +110,13 @@ export default function CheckoutPage() {
     }
   };
 
-  const finalDeliveryFee = 0;
-  const total = Math.max(0, subtotal - appliedDiscount);
+  const finalDeliveryFee = deliveryMethod === 'pickup' ? 0 : deliveryFee;
+  const total = Math.max(0, subtotal + finalDeliveryFee - appliedDiscount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (deliveryMethod === 'uber') {
+    if (deliveryMethod === 'delivery') {
       if (!location) {
         alert('Please pin your delivery location on the map.');
         return;
@@ -225,24 +225,24 @@ export default function CheckoutPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <button
                 type="button"
-                onClick={() => setDeliveryMethod('uber')}
+                onClick={() => setDeliveryMethod('delivery')}
                 style={{
                   padding: '18px 16px',
                   borderRadius: '16px',
-                  border: deliveryMethod === 'uber' ? '2.5px solid var(--pink)' : '1.5px solid rgba(243, 195, 206, 0.4)',
-                  background: deliveryMethod === 'uber' ? '#3B2116' : 'rgba(0, 0, 0, 0.2)',
+                  border: deliveryMethod === 'delivery' ? '2.5px solid var(--pink)' : '1.5px solid rgba(243, 195, 206, 0.4)',
+                  background: deliveryMethod === 'delivery' ? '#3B2116' : 'rgba(0, 0, 0, 0.2)',
                   color: '#FFFFFF',
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'all 0.2s ease',
-                  boxShadow: deliveryMethod === 'uber' ? '0 4px 14px rgba(243, 195, 206, 0.3)' : 'none'
+                  boxShadow: deliveryMethod === 'delivery' ? '0 4px 14px rgba(243, 195, 206, 0.3)' : 'none'
                 }}
               >
                 <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#FFFFFF', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Truck size={22} color="var(--pink)" /> Uber Delivery
+                  <Truck size={22} color="var(--pink)" /> Regular Delivery
                 </div>
                 <div style={{ fontSize: '0.82rem', color: 'var(--pink-light)', lineHeight: 1.4, opacity: 0.9 }}>
-                  Home delivery via Uber. Location chosen on map.
+                  70 - 100 EGP depending on location · Confirmed after ordering
                 </div>
               </button>
 
@@ -358,29 +358,24 @@ export default function CheckoutPage() {
               boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
             }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--pink)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ClipboardList size={20} /> Uber Delivery Address & Location
+                <ClipboardList size={20} /> Delivery Address & Location
               </div>
 
-              {/* Uber Delivery Caution Banner */}
+              {/* Regular Delivery Information Banner */}
               <div style={{
-                background: 'rgba(231, 76, 60, 0.15)',
-                border: '2px solid #e74c3c',
+                background: 'rgba(243, 195, 206, 0.12)',
+                border: '1.5px solid var(--pink)',
                 borderRadius: '14px',
-                padding: '18px',
+                padding: '16px 20px',
                 marginBottom: '20px',
                 color: '#FFFFFF'
               }}>
-                <div style={{ fontWeight: 700, fontSize: '1.02rem', color: '#ff6b6b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <AlertTriangle size={20} color="#ff6b6b" /> ⚠️ Uber Delivery Notice & Payment Rules:
+                <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--pink)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Truck size={18} color="var(--pink)" /> Regular Delivery Information:
                 </div>
-                <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.88rem', lineHeight: 1.6, color: '#FFFFFF' }}>
-                  <li>
-                    <strong>Delivery Fare:</strong> Uber delivery fee will be determined at the time of delivery after ordering and calculating the exact ride fare.
-                  </li>
-                  <li>
-                    <strong>Payment Method:</strong> Payment for Uber delivery items & fare is via <strong>Instapay or Telda ONLY</strong> (No Cash on Delivery for Uber delivery).
-                  </li>
-                </ul>
+                <div style={{ fontSize: '0.88rem', lineHeight: 1.5, color: '#FFFFFF', opacity: 0.95 }}>
+                  Delivery fee ranges from <strong>70 to 100 EGP</strong> depending on your location. The exact fee and delivery timing will be confirmed with you after placing your order.
+                </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -419,7 +414,7 @@ export default function CheckoutPage() {
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', fontWeight: 600, color: '#FFFFFF' }}>Pin Your Delivery Location *</label>
                 <p style={{ fontSize: '0.8rem', color: 'var(--pink-light)', marginBottom: '12px', opacity: 0.9 }}>
-                  Please drop a pin on the map to determine your delivery location for Uber.
+                  Please drop a pin on the map to determine your delivery location.
                 </p>
                 <CheckoutMap onLocationSelect={(lat, lng) => setLocation({ lat, lng })} />
                 {location && (
@@ -506,12 +501,12 @@ export default function CheckoutPage() {
                   <strong style={{ color: '#2ecc71' }}>FREE Pickup (0 EGP)</strong>
                 ) : location ? (
                   isDeliverable ? (
-                    <strong style={{ color: 'var(--pink)' }}>To Be Determined (Uber Fare)</strong>
+                    <strong style={{ color: 'var(--pink)' }}>EGP {deliveryFee.toFixed(2)} (Confirmed after ordering)</strong>
                   ) : (
                     <span style={{ color: '#ffaaaa' }}>Unavailable Location</span>
                   )
                 ) : (
-                  <span style={{ fontSize: '0.88rem', color: 'var(--pink-light)', fontStyle: 'italic' }}>To Be Determined (Pin Map)</span>
+                  <span style={{ fontSize: '0.88rem', color: 'var(--pink-light)', fontStyle: 'italic' }}>EGP 70 - 100 (Pin map to calculate)</span>
                 )}
               </span>
             </div>
@@ -528,12 +523,12 @@ export default function CheckoutPage() {
             <div style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--pink-light)', background: 'rgba(0,0,0,0.25)', padding: '14px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FFFFFF', fontWeight: 600 }}>
                 <Banknote size={16} color="var(--pink)" />
-                {deliveryMethod === 'uber' ? 'Payment: Instapay / Telda ONLY (No Cash)' : 'Payment: Cash on Pickup or Instapay / Telda'}
+                {deliveryMethod === 'delivery' ? 'Payment: Cash on Delivery or Instapay / Telda' : 'Payment: Cash on Pickup or Instapay / Telda'}
               </span>
               <span>·</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FFFFFF', fontWeight: 600 }}>
                 {deliveryMethod === 'pickup' ? <Clock size={16} color="var(--pink)" /> : <Truck size={16} color="var(--pink)" />}
-                {deliveryMethod === 'pickup' ? 'Next-day Pickup (12-8 PM)' : 'Uber Delivery'}
+                {deliveryMethod === 'pickup' ? 'Next-day Pickup (12-8 PM)' : 'Next-day Regular Delivery'}
               </span>
             </div>
           </div>
@@ -541,15 +536,15 @@ export default function CheckoutPage() {
           <button 
             type="submit" 
             className="btn btn-primary" 
-            disabled={deliveryMethod === 'uber' && (!isDeliverable || !location)} 
+            disabled={deliveryMethod === 'delivery' && (!isDeliverable || !location)} 
             style={{ 
               width: '100%', padding: '18px', fontSize: '1.15rem', fontWeight: 700,
               borderRadius: '50px', letterSpacing: '0.02em', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-              opacity: (deliveryMethod === 'pickup' || (deliveryMethod === 'uber' && isDeliverable && location)) ? 1 : 0.5, 
-              cursor: (deliveryMethod === 'pickup' || (deliveryMethod === 'uber' && isDeliverable && location)) ? 'pointer' : 'not-allowed'
+              opacity: (deliveryMethod === 'pickup' || (deliveryMethod === 'delivery' && isDeliverable && location)) ? 1 : 0.5, 
+              cursor: (deliveryMethod === 'pickup' || (deliveryMethod === 'delivery' && isDeliverable && location)) ? 'pointer' : 'not-allowed'
             }}
           >
-            {(deliveryMethod === 'pickup' || (deliveryMethod === 'uber' && isDeliverable && location)) ? 'Confirm & Place Order' : 'Pin Location on Map'}
+            {(deliveryMethod === 'pickup' || (deliveryMethod === 'delivery' && isDeliverable && location)) ? 'Confirm & Place Order' : 'Pin Location on Map'}
           </button>
         </form>
       </div>

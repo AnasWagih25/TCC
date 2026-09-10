@@ -36,10 +36,24 @@ function SuccessContent() {
         <PartyPopper size={44} color="var(--brown)" strokeWidth={2} />
       </div>
       <h2 style={{ fontSize: '2.2rem', marginBottom: '12px', color: '#FFFFFF', fontWeight: 700 }}>Order Received! 🍪</h2>
-      <p style={{ fontSize: '1.1rem', color: '#FFFFFF', marginBottom: '28px', lineHeight: 1.6 }}>
+      <p style={{ fontSize: '1.1rem', color: '#FFFFFF', marginBottom: '24px', lineHeight: 1.6 }}>
         Thank you for choosing The Cookie Concept.<br />
         Your order <strong style={{ color: 'var(--pink)', textDecoration: 'underline' }}>#{orderId}</strong> has been successfully placed.
       </p>
+      <div style={{
+        background: 'rgba(0, 0, 0, 0.25)',
+        border: '1.5px solid var(--pink)',
+        borderRadius: '14px',
+        padding: '16px 20px',
+        marginBottom: '28px',
+        fontSize: '0.92rem',
+        color: 'var(--pink-light)',
+        lineHeight: 1.5,
+        textAlign: 'center'
+      }}>
+        <strong style={{ color: '#FFFFFF', display: 'block', marginBottom: '6px' }}>ℹ️ Order Confirmation</strong>
+        For delivery orders, our team will contact you to confirm the delivery fee (70–100 EGP) and timing. For pickup orders, your order will be ready at our branch next day from 12 PM to 8 PM.
+      </div>
       <Link href="/shop" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: '1rem', fontWeight: 700 }}>
         Order More Cookies
       </Link>
