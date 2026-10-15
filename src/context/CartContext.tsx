@@ -1,8 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { createOrderSubmitter } from '@/lib/order-client';
+import type { CustomerInfo } from '@/lib/order-domain';
 import { defaultPickupSettings, resolvePickupSettings, type PickupSettings } from '@/lib/pickup';
 export { defaultPickupSettings, type PickupSettings } from '@/lib/pickup';
 
@@ -148,6 +150,12 @@ export type Order = {
   total: number;
   deliveryFee?: number;
   discount?: number;
+  subtotal?: number;
+  promoCode?: string;
+  paymentMethod?: 'cash' | 'instapay' | 'telda';
+  paymentStatus?: 'unpaid' | 'paid';
+  pickupSnapshot?: PickupSettings;
+  email?: { status: 'pending' | 'sending' | 'sent' | 'failed'; attempts?: number; lastError?: string; sentAt?: string; messageId?: string };
   status: 'pending' | 'fulfilled';
 };
 
@@ -173,7 +181,7 @@ type CartContextType = {
   addBoxToCart: (productId: string, boxSize: number, selections: BoxFlavorSelection[], selectedCustomizations?: { name: string; price: number; text?: string }[]) => { success: boolean; message: string };
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
   removeFromCart: (index: number) => void;
-  placeOrder: (customerInfo: any, deliveryFee?: number, discount?: number, deliveryMethod?: 'delivery' | 'pickup') => Promise<Order>;
+  placeOrder: (customerInfo: CustomerInfo, deliveryFee?: number, discount?: number, deliveryMethod?: 'delivery' | 'pickup', promoCode?: string, paymentMethod?: 'cash' | 'instapay' | 'telda') => Promise<Order>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (index: number) => Promise<void>;
   updateHeroImage: (url: string) => Promise<void>;
@@ -209,7 +217,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const savedCart = localStorage.getItem('tcc_cart');
     if (savedCart) setCart(JSON.parse(savedCart));
     
-    const savedOrders = localStorage.getItem('tcc_orders');
+    const savedOrders = sessionStorage.getItem('tcc_customer_orders_v2');
     if (savedOrders) setOrders(JSON.parse(savedOrders));
 
     const savedProducts = localStorage.getItem('tcc_products');
@@ -257,22 +265,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           for (const p of defaultProducts) {
             await setDoc(doc(db, 'products', p.id), p).catch(() => {});
           }
-        }
-
-        // Fetch orders from Firestore
-        try {
-          const ordersSnap = await getDocs(collection(db, 'orders'));
-          if (!ordersSnap.empty) {
-            const liveOrders: Order[] = [];
-            ordersSnap.forEach(document => {
-              liveOrders.push(document.data() as Order);
-            });
-            // Sort by date descending (newest first)
-            liveOrders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            setOrders(liveOrders);
-          }
-        } catch (ordersErr) {
-          console.error('Failed to fetch orders from Firestore:', ordersErr);
         }
 
         // Fetch hero image from Firestore
@@ -357,7 +349,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoaded) {
       try {
-        localStorage.setItem('tcc_orders', JSON.stringify(orders));
+        sessionStorage.setItem('tcc_customer_orders_v2', JSON.stringify(orders.slice(0, 10)));
       } catch (e) {
         console.error(e);
       }
@@ -481,51 +473,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(newCart);
   };
 
-  const placeOrder = async (customerInfo: any, deliveryFee: number = 70, discount: number = 0, deliveryMethod: 'delivery' | 'pickup' = 'delivery') => {
-    const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
-    
-    let subtotal = 0;
-    cart.forEach(item => subtotal += item.price * item.quantity);
-    const finalFee = deliveryMethod === 'pickup' ? 0 : deliveryFee;
-    const total = Math.max(0, subtotal + finalFee - discount);
-
-    const newOrder: Order = {
-      id: orderId,
-      date: new Date().toISOString(),
-      source: 'web',
-      deliveryMethod,
-      customer: customerInfo,
-      items: [...cart],
-      total: total,
-      deliveryFee: finalFee,
-      discount: discount,
-      status: 'pending'
-    };
-
-    // Save order to Firestore
-    try {
-      const sanitizedOrder = cleanForFirestore(newOrder);
-      await setDoc(doc(db, 'orders', orderId), sanitizedOrder);
-
-      // Update Stock
-      const updatedProducts = [...products];
-      for (const cartItem of cart) {
-        const pIndex = updatedProducts.findIndex(p => p.id === cartItem.id);
-        if (pIndex !== -1) {
-          updatedProducts[pIndex].stock = Math.max(0, updatedProducts[pIndex].stock - cartItem.quantity);
-          // Sync new stock to Firestore (merge true prevents overwriting other fields like price with stale data)
-          await setDoc(doc(db, 'products', updatedProducts[pIndex].id), { stock: updatedProducts[pIndex].stock }, { merge: true });
-        }
-      }
-      setProducts(updatedProducts);
-    } catch(err) {
-      console.error('Failed to save order to firestore', err);
+  const submitOrderRef = useRef<ReturnType<typeof createOrderSubmitter> | null>(null);
+  const placeOrder = async (customerInfo: CustomerInfo, deliveryFee = 70, discount = 0, deliveryMethod: 'delivery' | 'pickup' = 'delivery', promoCode = '', paymentMethod: 'cash' | 'instapay' | 'telda' = 'cash') => {
+    if (!cart.length) throw new Error('Your bag is empty.');
+    if (!submitOrderRef.current) {
+      let storage: Storage | null = null;
+      try { storage = sessionStorage; } catch { /* The active tab can still submit. */ }
+      submitOrderRef.current = createOrderSubmitter(storage);
     }
-
-    setOrders([newOrder, ...orders]);
+    const expectedTotal = Math.round((cart.reduce((sum, item) => sum + item.price * item.quantity, 0) + (deliveryMethod === 'pickup' ? 0 : deliveryFee) - discount) * 100) / 100;
+    const order = await submitOrderRef.current({
+      customer: customerInfo, deliveryMethod, paymentMethod, promoCode, expectedTotal,
+      items: cart.map(item => ({ id: item.id, quantity: item.quantity, selectedSize: item.selectedSize, price: item.price, ...(item.selectedFlavor ? { selectedFlavor: item.selectedFlavor } : {}), ...(item.boxSize ? { boxSize: item.boxSize, boxFlavors: item.boxFlavors } : {}), selectedCustomizations: item.selectedCustomizations || [] })),
+    });
+    setOrders(current => [order, ...current.filter(item => item.id !== order.id)]);
+    setProducts(current => current.map(product => ({ ...product, stock: Math.max(0, product.stock - order.items.filter(item => item.id === product.id).reduce((sum, item) => sum + item.quantity, 0)) })));
     setCart([]);
-    
-    return newOrder;
+    return order;
   };
 
   const updateProduct = async (product: Product) => {

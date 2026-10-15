@@ -16,6 +16,7 @@ export default function CheckoutPage() {
   const { cart, placeOrder, promoSettings, pickupSettings } = useCart();
   const router = useRouter();
 
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'instapay' | 'telda'>('cash');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
@@ -145,23 +146,18 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
     try {
-    // Create the order locally
+    // Continue only after the server confirms the persisted order.
     const newOrder = await placeOrder(
       { ...formData, address: orderAddress, location: orderLocation },
       finalDeliveryFee,
       appliedDiscount,
-      deliveryMethod
+      deliveryMethod,
+      appliedDiscount > 0 ? promoCodeInput.trim().toUpperCase() : '',
+      paymentMethod
     );
     
-    // Fire and forget email dispatch to the API
-    fetch('/api/send-order-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newOrder),
-    }).catch(console.error);
-
     router.push(`/success?orderId=${newOrder.id}`);
-    } catch { setSubmitError('We couldn’t place your order. Your bag is still here. Please try again.'); }
+    } catch (error) { setSubmitError(error instanceof Error ? error.message : 'We couldn’t confirm your order. Your bag is still here. Please try again.'); }
     finally { setSubmitting(false); }
   };
 
