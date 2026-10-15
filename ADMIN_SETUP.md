@@ -4,6 +4,8 @@ The new dashboard matches the storefront and subscribes to saved Firestore order
 
 ## One-time Firebase setup
 
+Local setup is complete as of 16 October 2026: the supplied service account is stored in ignored, owner-only `.env.local`, the existing staff account has its admin claim, live database transactions and order subscriptions passed verification, and SMTP authentication succeeded. No real test notification was sent. The hosting environment, scheduled worker and production rules still require the coordinated deployment steps below.
+
 1. In [Firebase Service accounts](https://console.firebase.google.com/project/thecc-1e732/settings/serviceaccounts/adminsdk), choose **Generate new private key** and download it. Never commit it, upload it to the site, or paste it into chat.
 2. Sign into the website admin dashboard. Open **Store settings** and copy **Staff user ID**.
 3. In the project terminal, replace the file path and user ID below, then run:
@@ -42,4 +44,4 @@ Order archive preserves the original record and does not change stock. Fulfillme
 - Confirm an unauthenticated browser cannot list orders or write catalog/stock/settings.
 - Check Netlify scheduled-function logs and SMTP inbox/bounce handling.
 
-No software can guarantee uninterrupted network, database, hosting, or inbox delivery. The implementation makes saved-order confirmation explicit, failures visible, and retries recoverable. Live end-to-end verification remains dependent on configured server credentials, deployed rules, a running scheduler and a working mail account.
+No software can guarantee uninterrupted network, database, hosting, or inbox delivery. The implementation makes saved-order confirmation explicit, failures visible, and retries recoverable. Published-site end-to-end verification still requires hosting credentials, deployed rules, a running scheduler and an authorized test email. See `outputs/admin/VALIDATION.md` for completed local and live Firebase checks.

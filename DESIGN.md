@@ -251,6 +251,8 @@ Product/box dialogs lock background scroll, contain keyboard focus, close with E
 
 ## Do's and Don'ts
 
+The bakery workspace uses these same paper, chocolate, blush and semantic theme tokens. Ahsing is reserved for short headings and the wordmark; Outfit handles tables, metrics and controls. Its dedicated header and desktop sidebar become a five-item navigation grid on phones, with an immediate light/dark switch. Order details, product editing and photo cropping use focus-contained native dialogs. Data states are part of the interface: live/cached connections, incomplete historical records, uncertain saves, notification failures and recoverable archives remain visible. The workspace styles are scoped to the admin route in `src/app/admin/admin.css`.
+
 ### Do:
 - **Do** use actual catalog photography, prices and stored customer submissions.
 - **Do** preserve the warm paper ground, the final muted text token and the Ahsing/Outfit role split.
