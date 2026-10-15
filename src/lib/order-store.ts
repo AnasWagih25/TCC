@@ -3,6 +3,7 @@ import type { Firestore } from 'firebase-admin/firestore';
 import type { Category, Order, Product, PromoCode } from '@/context/CartContext';
 import { type CheckoutRequest, OrderError, priceOrder } from './order-domain';
 import { defaultPickupSettings, resolvePickupSettings, type PickupSettings } from './pickup';
+import { defaultCategories } from './catalog-defaults';
 
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 
@@ -27,7 +28,7 @@ export async function persistCheckout(db: Firestore, request: CheckoutRequest): 
     const pickupDoc = await transaction.get(db.collection('settings').doc('pickup'));
     const promoDoc = await transaction.get(db.collection('settings').doc('promo'));
     const products = productDocs.filter(doc => doc.exists).map(doc => ({ ...doc.data(), id: doc.id }) as Product);
-    const categories = categoryDocs.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Category);
+    const categories = categoryDocs.empty ? defaultCategories : categoryDocs.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Category);
     const pickup = pickupDoc.exists ? resolvePickupSettings(pickupDoc.data() as PickupSettings) : defaultPickupSettings;
     const priced = priceOrder(request, products, categories, promoDoc.exists ? promoDoc.data() as PromoCode : null, pickup);
     const customer = request.deliveryMethod === 'pickup' ? { ...request.customer, address: `Pickup (${pickup.address})`, location: { lat: pickup.lat, lng: pickup.lng } } : request.customer;

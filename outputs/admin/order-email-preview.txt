@@ -1,0 +1,27 @@
+The Cookie Concept · Order TEST-PREVIEW-ONLY
+16 Oct 2026, 01:29
+Source: web
+Customer: Example customer (preview only)
+Phone: 01000000000
+Email: preview@example.invalid
+Address: Example delivery address, Second New Cairo
+Notes: TEST PREVIEW. No order was placed and no email was sent.
+Fulfillment: Delivery
+Schedule: Next-day delivery
+Payment method: Instapay
+Payment status: unpaid
+Order status: pending
+Map: https://www.google.com/maps/search/?api=1&query=30.04,31.55
+
+1 × Classic Belgian Milk Chocolate (Normal)
+Unit price: EGP 395.00 · Line total: EGP 395.00
+Letters (Writing) (+EGP 55.00 per item): Happy birthday, Salma
+1 × Cookie Boxes (Box of 6)
+Unit price: EGP 280.00 · Line total: EGP 280.00
+Belgian chocolate × 4
+Kinder × 2
+
+Items subtotal: EGP 675.00
+Delivery: EGP 70.00
+Discount: − EGP 33.75 (QUIRK)
+Total: EGP 711.25

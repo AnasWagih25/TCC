@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
+import { pendingCheckout } from '@/lib/order-client';
+import { deliveryPrice, money } from '@/lib/order-domain';
 import { ShoppingCart, ClipboardList, FileText, Banknote, Truck, CheckCircle2, Store, Clock, MapPin } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -13,9 +15,11 @@ const CheckoutMap = dynamic(() => import('@/components/CheckoutMap'), {
 });
 
 export default function CheckoutPage() {
-  const { cart, placeOrder, promoSettings, pickupSettings } = useCart();
+  const { cart, placeOrder, retryPendingOrder, promoSettings, pickupSettings } = useCart();
   const router = useRouter();
 
+  const [previousReference, setPreviousReference] = useState('');
+  useEffect(() => { const frame = requestAnimationFrame(() => { try { const pending = pendingCheckout(sessionStorage); if (pending) setPreviousReference(`ORD-${pending.requestId}`); } catch { /* Storage unavailable. */ } }); return () => cancelAnimationFrame(frame); }, []);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'instapay' | 'telda'>('cash');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -28,75 +32,23 @@ export default function CheckoutPage() {
     notes: ''
   });
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [deliveryFee, setDeliveryFee] = useState<number>(0);
-  const [deliveryZoneName, setDeliveryZoneName] = useState<string>('');
-  const [isDeliverable, setIsDeliverable] = useState<boolean>(true);
+  let deliveryFee = 0;
+  let isDeliverable = true;
+  if (location) { try { deliveryFee = deliveryPrice(location, pickupSettings); } catch { isDeliverable = false; } }
+  const deliveryZoneName = ({ 70: 'Close proximity', 80: 'Mid distance', 90: 'Central Cairo & Giza', 100: 'Western Giza, Zayed & October' } as Record<number, string>)[deliveryFee] || '';
   
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
   const [promoMessage, setPromoMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  let subtotal = 0;
-  cart.forEach((item) => {
-    subtotal += item.price * item.quantity;
-  });
-
-  // Calculate distance in km between two lat/lng points using Haversine formula
-  const getDistanceFromLatLonInKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Radius of the earth in km
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2)
-      ; 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)); 
-    const d = R * c; // Distance in km
-    return d;
-  }
-
-  useEffect(() => {
-    if (!location) return;
-
-    // Dispatch Origin: Second New Cairo (القاهرة الجديدة ثان)
-    const distance = getDistanceFromLatLonInKm(location.lat, location.lng, pickupSettings.lat, pickupSettings.lng);
-
-    // Distance-based fee starting from Second New Cairo:
-    // 70 EGP in close proximity, up to 100 EGP for further locations
-    if (distance <= 14) {
-      // Close proximity: Second New Cairo, Al Rehab, 1st & 5th Settlement, Tagamoa, Lotus, Beit El Watan
-      setIsDeliverable(true);
-      setDeliveryFee(70);
-      setDeliveryZoneName('Close Proximity');
-    } else if (distance <= 25) {
-      // Mid distance: Madinaty, El Shorouk, Nasr City, Heliopolis, Maadi, New Capital
-      setIsDeliverable(true);
-      setDeliveryFee(80);
-      setDeliveryZoneName('Mid Distance');
-    } else if (distance <= 36) {
-      // Farther distance: Downtown Cairo, Zamalek, Dokki, Mohandessin, Central Giza, Haram
-      setIsDeliverable(true);
-      setDeliveryFee(90);
-      setDeliveryZoneName('Central Cairo & Giza');
-    } else if (distance <= 65) {
-      // Furthest distance: Sheikh Zayed, 6th of October, October Gardens, Outer Borders
-      setIsDeliverable(true);
-      setDeliveryFee(100);
-      setDeliveryZoneName('Western Giza, Zayed & October');
-    } else {
-      setIsDeliverable(false);
-      setDeliveryFee(0);
-      setDeliveryZoneName('');
-    }
-  }, [location, pickupSettings.lat, pickupSettings.lng]);
+  const subtotal = money(cart.reduce((sum, item) => sum + item.price * item.quantity, 0));
 
   const handleApplyPromo = () => {
     const inputCode = promoCodeInput.trim().toUpperCase();
     
     // Secret Quirk easter egg promo code (5% off)
     if (inputCode === 'QUIRK') {
-      const discount = (subtotal * 5) / 100;
+      const discount = money((subtotal * 5) / 100);
       setAppliedDiscount(discount);
       setPromoMessage({ text: `Your cookie treat is applied. You saved 5% (EGP ${discount.toFixed(2)})`, type: 'success' });
       return;
@@ -108,7 +60,8 @@ export default function CheckoutPage() {
       return;
     }
     if (inputCode === promoSettings.code.toUpperCase()) {
-      const discount = Math.min((subtotal * promoSettings.discountPercentage) / 100, promoSettings.maxCap);
+      const rawDiscount = money((subtotal * promoSettings.discountPercentage) / 100);
+      const discount = promoSettings.maxCap > 0 ? Math.min(rawDiscount, promoSettings.maxCap) : rawDiscount;
       setAppliedDiscount(discount);
       setPromoMessage({ text: `Promo applied! You saved EGP ${discount.toFixed(2)}`, type: 'success' });
     } else {
@@ -118,7 +71,7 @@ export default function CheckoutPage() {
   };
 
   const finalDeliveryFee = deliveryMethod === 'pickup' ? 0 : deliveryFee;
-  const total = Math.max(0, subtotal + finalDeliveryFee - appliedDiscount);
+  const total = money(Math.max(0, subtotal + finalDeliveryFee - appliedDiscount));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,7 +110,7 @@ export default function CheckoutPage() {
     );
     
     router.push(`/success?orderId=${newOrder.id}`);
-    } catch (error) { setSubmitError(error instanceof Error ? error.message : 'We couldn’t confirm your order. Your bag is still here. Please try again.'); }
+    } catch (error) { setSubmitError(error instanceof Error ? error.message : 'We couldn’t confirm your order. Your bag is still here. Please try again.'); try { const pending = pendingCheckout(sessionStorage); setPreviousReference(pending ? `ORD-${pending.requestId}` : ''); } catch { /* Storage unavailable. */ } }
     finally { setSubmitting(false); }
   };
 
@@ -476,7 +429,7 @@ export default function CheckoutPage() {
             <div className="form-group" style={{ marginBottom: 0, display: 'flex', gap: '12px' }}>
               <input
                 aria-label="Promo code" type="text" placeholder="Enter promo code"
-                value={promoCodeInput} onChange={(e) => setPromoCodeInput(e.target.value)}
+                value={promoCodeInput} onChange={(e) => { setPromoCodeInput(e.target.value); setAppliedDiscount(0); setPromoMessage(null); }}
                 style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--pink)', background: 'var(--off-white)', color: 'var(--ink)' }}
               />
               <button 
@@ -549,6 +502,16 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          <label className="checkout-payment-label">
+            Payment method
+            <select value={paymentMethod} onChange={event => setPaymentMethod(event.target.value as typeof paymentMethod)} disabled={submitting}>
+              <option value="cash">Cash on {deliveryMethod === 'pickup' ? 'pickup' : 'delivery'}</option>
+              <option value="instapay">Instapay</option>
+              <option value="telda">Telda</option>
+            </select>
+            <small>Our team confirms receipt of any transfer. Selecting a method does not mark your order as paid.</small>
+          </label>
+          {previousReference && <div className="checkout-recovery"><strong>Previous submission: {previousReference}</strong><p>Its confirmation was interrupted. Check the original submission before placing a separate order. Any new items in your bag stay here.</p><button type="button" className="text-link" disabled={submitting} onClick={async () => { setSubmitting(true); setSubmitError(''); try { const order = await retryPendingOrder(); router.push(`/success?orderId=${order.id}`); } catch (error) { setSubmitError(error instanceof Error ? error.message : 'The previous submission could not be checked.'); try { if (!pendingCheckout(sessionStorage)) setPreviousReference(''); } catch { /* Storage unavailable. */ } } finally { setSubmitting(false); } }}>Check previous submission</button></div>}
           {submitError && <p className="form-error" role="alert">{submitError}</p>}
           <button 
             type="submit" 

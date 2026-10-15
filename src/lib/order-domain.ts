@@ -17,7 +17,7 @@ export type CheckoutRequest = {
   expectedTotal: number;
 };
 export const money = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
-const validNumber = (value: unknown) => typeof value === 'number' && Number.isFinite(value);
+const validNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 function quantity(value: unknown, label: string, max = 100) {
   if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > max) throw new OrderError(`Choose a valid ${label}.`);
   return Number(value);
@@ -43,7 +43,7 @@ export function validateCheckout(value: unknown): CheckoutRequest {
   if (!customer || typeof customer !== 'object') throw new OrderError('Add your contact details.');
   const name = text(customer.name, 'your name', 100);
   const phone = text(customer.phone, 'your phone number', 30);
-  if (!/^[+\d\s()-]{7,30}$/.test(phone)) throw new OrderError('Check your phone number.');
+  if (!/^[+\d\s()-]{7,30}$/.test(phone) || phone.replace(/\D/g, '').length < 7 || phone.replace(/\D/g, '').length > 15) throw new OrderError('Check your phone number.');
   const email = text(customer.email, 'your email', 254);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new OrderError('Check your email address.');
   const notes = text(customer.notes ?? '', 'your notes', 2000, false);
@@ -69,6 +69,7 @@ export function priceOrder(request: CheckoutRequest, products: Product[], catego
   const items: CartItem[] = request.items.map(selection => {
     const product = products.find(item => item.id === selection.id);
     if (!product) throw new OrderError('A product in your bag is no longer available.', 409);
+    if (!product.price || !validNumber(product.price.normal) || !validNumber(product.price.mini)) throw new OrderError('A product needs its prices updated before ordering.', 409);
     const category = categories.find(item => item.id === product.type);
     const count = quantity(selection.quantity, 'quantity');
     quantities.set(product.id, (quantities.get(product.id) || 0) + count);
@@ -122,7 +123,7 @@ export function priceOrder(request: CheckoutRequest, products: Product[], catego
   let discount = 0;
   if (request.promoCode === 'QUIRK') discount = money(subtotal * 0.05);
   else if (request.promoCode) {
-    if (!promo?.isActive || promo.code.toUpperCase() !== request.promoCode || promo.discountPercentage < 0 || promo.discountPercentage > 100) throw new OrderError('This promo code is no longer available.');
+    if (!promo?.isActive || typeof promo.code !== 'string' || promo.code.toUpperCase() !== request.promoCode || !validNumber(promo.discountPercentage) || promo.discountPercentage < 0 || promo.discountPercentage > 100 || !validNumber(promo.maxCap) || promo.maxCap < 0) throw new OrderError('This promo code is no longer available.');
     discount = money(subtotal * promo.discountPercentage / 100);
     if (promo.maxCap > 0) discount = Math.min(discount, promo.maxCap);
   }
@@ -134,7 +135,7 @@ export function priceOrder(request: CheckoutRequest, products: Product[], catego
 
 export function orderMapUrl(order: Order) {
   const pin = order.customer?.location;
-  return pin && validNumber(pin.lat) && validNumber(pin.lng) ? `https://www.google.com/maps/search/?api=1&query=${pin.lat},${pin.lng}` : null;
+  return pin && validNumber(pin.lat) && validNumber(pin.lng) && Math.abs(pin.lat) <= 90 && Math.abs(pin.lng) <= 180 ? `https://www.google.com/maps/search/?api=1&query=${pin.lat},${pin.lng}` : null;
 }
 export function orderSubtotal(order: Order) {
   return money((order.items || []).reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0));

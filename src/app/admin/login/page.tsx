@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { Lock } from 'lucide-react';
 import { auth } from '@/lib/firebase';
@@ -15,16 +15,16 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) {
+    if (user && isAdmin) {
       router.push('/admin/dashboard');
     }
-  }, [user, router]);
+  }, [user, isAdmin, router]);
 
-  if (user) {
+  if (user && isAdmin) {
     return null;
   }
 
@@ -43,7 +43,12 @@ export default function AdminLogin() {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
+      const credential = await signInWithEmailAndPassword(auth, normalizedEmail, normalizedPassword);
+      if ((await credential.user.getIdTokenResult(true)).claims.admin !== true) {
+        await signOut(auth);
+        setError('This account does not have staff access. Sign in with the bakery’s administrator account.');
+        return;
+      }
       // Auth context listens to onAuthStateChanged, so it handles the layout state
       router.push('/admin/dashboard');
     } catch (err: unknown) {

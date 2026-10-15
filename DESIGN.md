@@ -19,6 +19,11 @@ colors:
   error-surface: "#f6e0d9"
   disabled: "#e0d7cc"
 typography:
+  emailBody:
+    fontFamily: "Arial, sans-serif"
+    fontSize: "14px"
+    fontWeight: 400
+    lineHeight: 1.6
   display:
     fontFamily: "Ahsing, Georgia, serif"
     fontSize: "clamp(3.5rem, 5.7vw, 5.1rem)"
@@ -177,6 +182,8 @@ The rounded, expressive display face makes short headings recognizable. Outfit h
 - **Label:** form labels use the label role. Navigation and primary actions use (13px), with primary actions at weight (500) and line-height (1.4). Small metadata uses (10–12px).
 
 **The Two Voices Rule.** Reserve Ahsing for display headings and wordmarks; use Outfit for controls and information that must scan quickly.
+
+Transactional email uses Arial body text and Georgia headings as explicit email-client fallbacks. Email clients cannot reliably load the storefront's local web fonts. The admin dashboard continues to use Ahsing for short page headings and Outfit for all operational information and forms.
 
 Display headings balance their wrapping, paragraphs use pretty wrapping, and bounded copy columns prevent long spans of small text. Tabular figures are explicitly used for bag counts and staff statistics.
 

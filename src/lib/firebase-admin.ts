@@ -23,7 +23,7 @@ export const adminAuth = () => getAuth(adminApp());
 export async function requireAdmin(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer /, '');
   if (!token) throw new Error('ADMIN_AUTH_REQUIRED');
-  const user = await adminAuth().verifyIdToken(token, true);
+  const user = await adminAuth().verifyIdToken(token, true).catch(() => { throw new Error('ADMIN_AUTH_REQUIRED'); });
   const uids = (process.env.ADMIN_UIDS || '').split(',').map(value => value.trim()).filter(Boolean);
   if (user.admin !== true && !uids.includes(user.uid)) throw new Error('ADMIN_AUTH_REQUIRED');
   return user;

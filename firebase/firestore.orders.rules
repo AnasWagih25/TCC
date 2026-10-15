@@ -1,0 +1,20 @@
+// Merge INSIDE match /databases/{database}/documents and remove any broader
+// orders/product/settings rules that grant the same paths public write access.
+function orderStaff() {
+  return request.auth != null && request.auth.token.admin == true;
+}
+match /orders/{orderId} {
+  allow read: if orderStaff();
+  // Trusted server transactions create orders and reserve stock.
+  allow create, delete: if false;
+  allow update: if orderStaff()
+    && request.resource.data.diff(resource.data).affectedKeys()
+      .hasOnly(['status', 'paymentStatus', 'archived', 'updatedAt', 'updatedBy'])
+    && request.resource.data.status in ['pending', 'fulfilled']
+    && (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus in ['paid', 'unpaid'])
+    && (!('archived' in request.resource.data) || request.resource.data.archived is bool)
+    && request.resource.data.updatedBy == request.auth.uid;
+}
+match /orderEmailJobs/{jobId} {
+  allow read, write: if false;
+}

@@ -54,7 +54,7 @@ export default function ReviewAdmin() {
         ),
       );
     } catch {
-      setError("The publishing change could not be saved. Please try again.");
+      setError("The publishing change could not be confirmed. Refresh the list before retrying.");
     } finally {
       setBusy("");
     }
@@ -77,6 +77,7 @@ export default function ReviewAdmin() {
         {["pending", "published", "hidden", "all"].map((status) => (
           <button
             className={`filter-chip ${filter === status ? "active" : ""}`}
+            aria-pressed={filter === status}
             key={status}
             onClick={() => setFilter(status)}
           >
@@ -135,7 +136,7 @@ export default function ReviewAdmin() {
                   </button>
                   <button
                     className="btn btn-sm btn-primary"
-                    disabled={busy === review.id}
+                    disabled={Boolean(busy)}
                     onClick={() =>
                       changeStatus(
                         review,

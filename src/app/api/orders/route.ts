@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { adminDatabase, serverFirebaseConfigured } from '@/lib/firebase-admin';
 import { OrderError, validateCheckout } from '@/lib/order-domain';
 import { persistCheckout } from '@/lib/order-store';
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const input = validateCheckout(JSON.parse(body));
     const db = adminDatabase();
     const order = await persistCheckout(db, input);
-    try { await sendOrderNotification(db, order.id); } catch (error) { console.error('Order notification remains queued:', error instanceof Error ? error.message : 'Unknown failure'); }
+    after(async () => { try { await sendOrderNotification(db, order.id); } catch (error) { console.error('Order notification remains queued:', error instanceof Error ? error.message : 'Unknown failure'); } });
     return NextResponse.json({ order }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     if (error instanceof OrderError) return NextResponse.json({ error: error.message, definitive: true }, { status: error.status });

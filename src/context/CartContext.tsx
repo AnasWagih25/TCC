@@ -1,10 +1,13 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, deleteDoc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { createOrderSubmitter } from '@/lib/order-client';
-import type { CustomerInfo } from '@/lib/order-domain';
+import { defaultCategories } from '@/lib/catalog-defaults';
+import { confirmWrite } from '@/lib/confirm-write';
+import { reconcileProductEdit } from '@/lib/catalog-edit';
+import { createOrderSubmitter, pendingCheckout, remainingCart } from '@/lib/order-client';
+import { money, type CustomerInfo } from '@/lib/order-domain';
 import { defaultPickupSettings, resolvePickupSettings, type PickupSettings } from '@/lib/pickup';
 export { defaultPickupSettings, type PickupSettings } from '@/lib/pickup';
 
@@ -29,6 +32,7 @@ export type Flavor = {
 };
 
 export type Product = {
+  updatedAt?: string;
   id: string;
   name: string;
   description: string;
@@ -78,59 +82,21 @@ export type PromoCode = {
   isActive: boolean;
 };
 
-export function parseGoogleMapsUrl(inputUrl: string): { lat: number; lng: number; mapUrl: string } {
-  const url = inputUrl.trim();
-  let lat = defaultPickupSettings.lat;
-  let lng = defaultPickupSettings.lng;
+export { parseGoogleMapsUrl } from '@/lib/maps';
 
-  if (!url) {
-    return { lat, lng, mapUrl: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}` };
-  }
-
-  // Regex 1: @lat,lng format e.g. /@30.0444,31.2357,15z
-  const atMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (atMatch) {
-    lat = parseFloat(atMatch[1]);
-    lng = parseFloat(atMatch[2]);
-  } else {
-    // Regex 2: q=lat,lng or query=lat,lng or place/lat,lng or ll=lat,lng
-    const queryMatch = url.match(/(?:q|query|place|ll)=(-?\d+\.\d+),(-?\d+\.\d+)/) || url.match(/\/place\/(-?\d+\.\d+),(-?\d+\.\d+)/);
-    if (queryMatch) {
-      lat = parseFloat(queryMatch[1]);
-      lng = parseFloat(queryMatch[2]);
-    } else {
-      // Regex 3: Plain numbers lat, lng e.g. "30.0444, 31.2357"
-      const pairMatch = url.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
-      if (pairMatch) {
-        lat = parseFloat(pairMatch[1]);
-        lng = parseFloat(pairMatch[2]);
-      }
-    }
-  }
-
-  const mapUrl = url.startsWith('http://') || url.startsWith('https://')
-    ? url
-    : `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-
-  return { lat, lng, mapUrl };
-}
-
-export function cleanForFirestore(obj: any): any {
-  if (obj === null || obj === undefined) return null;
-  if (Array.isArray(obj)) {
-    return obj.map(item => cleanForFirestore(item)).filter(item => item !== undefined);
-  }
+export function cleanForFirestore<T>(obj: T): T {
+  if (obj === null || obj === undefined) return null as T;
+  if (Array.isArray(obj)) return obj.map(item => cleanForFirestore(item)).filter(item => item !== undefined) as T;
   if (typeof obj === 'object') {
-    const cleaned: any = {};
-    for (const key of Object.keys(obj)) {
-      const val = obj[key];
-      if (val !== undefined) {
-        cleaned[key] = cleanForFirestore(val);
-      }
-    }
-    return cleaned;
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) if (value !== undefined) cleaned[key] = cleanForFirestore(value);
+    return cleaned as T;
   }
   return obj;
+}
+
+function cachedValue<T>(kind: 'localStorage' | 'sessionStorage', key: string, fallback: T): T {
+  try { const raw = window[kind].getItem(key); if (raw === null) return fallback; const value = JSON.parse(raw); if (Array.isArray(fallback) && !Array.isArray(value)) return fallback; if (typeof fallback === 'boolean' && typeof value !== 'boolean') return fallback; if (fallback && typeof fallback === 'object' && !Array.isArray(fallback) && (!value || typeof value !== 'object' || Array.isArray(value))) return fallback; return value as T; } catch { return fallback; }
 }
 
 export type Order = {
@@ -165,12 +131,6 @@ const defaultProducts: Product[] = [
   { id: 'p3', name: 'Kinder Chocolate', description: 'Rich dough packed with Kinder chocolate bars and a creamy center.', price: { normal: 499, mini: 300 }, stock: 35, image: 'kinder 1.png', images: ['kinder 1.png'] }
 ];
 
-const defaultCategories: Category[] = [
-  { id: 'cookie', name: 'Cookie', hasDescription: false, flavorType: 'single', sizeType: 'none', isBoxBuilder: false },
-  { id: 'cake', name: 'Cookie Cake', hasDescription: true, flavorType: 'none', sizeType: 'normal_mini', isBoxBuilder: false },
-  { id: 'item', name: 'Cookie Boxes', hasDescription: true, flavorType: 'array', sizeType: 'box_sizes', isBoxBuilder: true }
-];
-
 type CartContextType = {
   products: Product[];
   cart: CartItem[];
@@ -182,13 +142,11 @@ type CartContextType = {
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
   removeFromCart: (index: number) => void;
   placeOrder: (customerInfo: CustomerInfo, deliveryFee?: number, discount?: number, deliveryMethod?: 'delivery' | 'pickup', promoCode?: string, paymentMethod?: 'cash' | 'instapay' | 'telda') => Promise<Order>;
-  updateProduct: (product: Product) => Promise<void>;
+  updateProduct: (product: Product, original?: Pick<Product, 'stock' | 'updatedAt'>) => Promise<void>;
   deleteProduct: (index: number) => Promise<void>;
-  updateHeroImage: (url: string) => Promise<void>;
+  updateHeroImage: (url: string, animated?: boolean) => Promise<void>;
   updateHeroRotation: (enabled: boolean) => Promise<void>;
-  markOrderFulfilled: (index: number) => void;
-  addManualOrder: (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => string;
-  deleteOrder: (orderId: string) => void;
+  retryPendingOrder: () => Promise<Order>;
   promoSettings: PromoCode | null;
   updatePromoSettings: (promo: PromoCode) => Promise<void>;
   pickupSettings: PickupSettings;
@@ -213,107 +171,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // 1. Immediately load local data to unblock the app (Hydration)
-    const savedCart = localStorage.getItem('tcc_cart');
-    if (savedCart) setCart(JSON.parse(savedCart));
-    
-    const savedOrders = sessionStorage.getItem('tcc_customer_orders_v2');
-    if (savedOrders) setOrders(JSON.parse(savedOrders));
-
-    const savedProducts = localStorage.getItem('tcc_products');
-    if (savedProducts) setProducts(JSON.parse(savedProducts));
-    else setProducts(defaultProducts);
-
-    const savedCategories = localStorage.getItem('tcc_categories');
-    if (savedCategories) setCategories(JSON.parse(savedCategories));
-    else setCategories(defaultCategories);
-
-    // Load cached hero image & rotation if available
-    const savedHero = localStorage.getItem('tcc_hero_image');
-    if (savedHero) setHeroImage(savedHero);
-
-    const savedRot = localStorage.getItem('tcc_hero_rotation');
-    if (savedRot !== null) {
-      try { setHeroRotationEnabled(JSON.parse(savedRot)); } catch (e) {}
-    }
-
-    // Load cached pickup settings
-    const savedPickup = localStorage.getItem('tcc_pickup_settings');
-    if (savedPickup) {
-      setPickupSettings(resolvePickupSettings(JSON.parse(savedPickup)));
-    }
-
-    // Unblock the UI immediately!
+    // Restore external browser storage without letting a corrupt cache break checkout.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration synchronizes external browser storage once.
+    setCart(cachedValue<CartItem[]>('localStorage', 'tcc_cart', []).filter(item => item && typeof item.id === 'string' && Number.isFinite(item.price) && Number.isInteger(item.quantity) && item.quantity > 0));
+    setOrders(cachedValue<Order[]>('sessionStorage', 'tcc_customer_orders_v2', []).filter(order => order && typeof order.id === 'string'));
+    setProducts(cachedValue<Product[]>('localStorage', 'tcc_products', defaultProducts).filter(product => product && typeof product.id === 'string' && typeof product.name === 'string' && product.price && Number.isFinite(product.stock)));
+    setCategories(cachedValue<Category[]>('localStorage', 'tcc_categories', defaultCategories).filter(category => category && typeof category.id === 'string' && typeof category.name === 'string'));
+    try { const hero = localStorage.getItem('tcc_hero_image'); if (hero) setHeroImage(hero); } catch { /* Storage is optional. */ }
+    setHeroRotationEnabled(cachedValue('localStorage', 'tcc_hero_rotation', true));
+    setPickupSettings(resolvePickupSettings(cachedValue('localStorage', 'tcc_pickup_settings', defaultPickupSettings)));
     setIsLoaded(true);
 
-    // 2. Fetch live global data from Firestore in the background
-    const fetchGlobalData = async () => {
-      try {
-        const productsSnap = await getDocs(collection(db, 'products'));
-        let liveProducts: Product[] = [];
-        
-        if (!productsSnap.empty) {
-          productsSnap.forEach(document => {
-            liveProducts.push(document.data() as Product);
-          });
-          // Always overwrite with Firestore data — this is the source of truth
-          setProducts(liveProducts);
-          // Update localStorage immediately so next load has fresh data
-          try { localStorage.setItem('tcc_products', JSON.stringify(liveProducts)); } catch (e) {}
-        } else {
-          // If Firestore is completely empty, upload default products
-          for (const p of defaultProducts) {
-            await setDoc(doc(db, 'products', p.id), p).catch(() => {});
-          }
+    // Independent live subscriptions prevent one failed settings read from hiding catalog data.
+    const report = (error: unknown) => console.error('Store data could not be refreshed:', error);
+    const unsubscribers = [
+      onSnapshot(collection(db, 'products'), snapshot => {
+        if (snapshot.metadata.fromCache && snapshot.empty) return;
+        setProducts(snapshot.docs.map(document => {
+          const value = document.data() as Product;
+          return { ...value, id: document.id, type: value.type || (value.boxPricing?.length ? 'item' : value.price?.mini > 0 ? 'cake' : 'cookie') };
+        }).filter(product => product.price && typeof product.name === 'string' && Number.isFinite(product.stock)));
+      }, report),
+      onSnapshot(collection(db, 'categories'), snapshot => {
+        if (snapshot.metadata.fromCache && snapshot.empty) return;
+        setCategories(snapshot.docs.map(document => ({ ...document.data(), id: document.id }) as Category));
+      }, report),
+      onSnapshot(doc(db, 'settings', 'homepage'), snapshot => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+        if (typeof data.heroImage === 'string' && data.heroImage.trim()) {
+          setHeroImage(data.heroImage);
+          try { localStorage.setItem('tcc_hero_image', data.heroImage); } catch { /* Cache is optional. */ }
         }
-
-        // Fetch hero image from Firestore
-        const heroSnap = await getDoc(doc(db, 'settings', 'homepage'));
-        if (heroSnap.exists()) {
-          const heroData = heroSnap.data();
-          if (typeof heroData.heroImage === 'string' && heroData.heroImage.trim()) setHeroImage(heroData.heroImage);
-          if (heroData.heroRotationEnabled !== undefined) setHeroRotationEnabled(heroData.heroRotationEnabled);
-          // Cache hero image in localStorage
-          try { if (typeof heroData.heroImage === 'string' && heroData.heroImage.trim()) localStorage.setItem('tcc_hero_image', heroData.heroImage); } catch (e) {}
-        }
-
-        // Fetch promo settings
-        const promoSnap = await getDoc(doc(db, 'settings', 'promo'));
-        if (promoSnap.exists()) {
-          setPromoSettings(promoSnap.data() as PromoCode);
-        }
-
-        // Fetch pickup settings
-        const pickupSnap = await getDoc(doc(db, 'settings', 'pickup'));
-        if (pickupSnap.exists()) {
-          const livePickup = resolvePickupSettings(pickupSnap.data() as PickupSettings);
-          setPickupSettings(livePickup);
-          try { localStorage.setItem('tcc_pickup_settings', JSON.stringify(livePickup)); } catch (e) {}
-        }
-
-        // Fetch categories
-        const categoriesSnap = await getDocs(collection(db, 'categories'));
-        let liveCategories: Category[] = [];
-        if (!categoriesSnap.empty) {
-          categoriesSnap.forEach(document => {
-            liveCategories.push(document.data() as Category);
-          });
-          setCategories(liveCategories);
-          try { localStorage.setItem('tcc_categories', JSON.stringify(liveCategories)); } catch (e) {}
-        } else {
-          for (const c of defaultCategories) {
-            await setDoc(doc(db, 'categories', c.id), c).catch(() => {});
-          }
-          setCategories(defaultCategories);
-          try { localStorage.setItem('tcc_categories', JSON.stringify(defaultCategories)); } catch (e) {}
-        }
-
-      } catch (err) {
-        console.error('Failed to connect to Firestore. Ensure Firestore Database is created in your Firebase Console.', err);
-      }
-    };
-
-    fetchGlobalData();
+        if (typeof data.heroRotationEnabled === 'boolean') setHeroRotationEnabled(data.heroRotationEnabled);
+      }, report),
+      onSnapshot(doc(db, 'settings', 'promo'), snapshot => setPromoSettings(snapshot.exists() ? snapshot.data() as PromoCode : null), report),
+      onSnapshot(doc(db, 'settings', 'pickup'), snapshot => {
+        if (!snapshot.exists()) return;
+        const value = resolvePickupSettings(snapshot.data() as PickupSettings);
+        setPickupSettings(value);
+        try { localStorage.setItem('tcc_pickup_settings', JSON.stringify(value)); } catch { /* Cache is optional. */ }
+      }, report),
+    ];
+    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
   }, []);
 
   useEffect(() => {
@@ -360,6 +260,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const product = products.find(p => p.id === productId);
     if (!product || product.stock <= 0) return { success: false, message: 'Out of stock' };
 
+    if (cart.filter(item => item.id === productId).reduce((sum, item) => sum + item.quantity, 0) >= product.stock) return { success: false, message: `Only ${product.stock} available across all sizes and options.` };
+
     const isCookieItem = product.type === 'item';
     let selectedPrice: number;
     let cartFlavor: string | undefined;
@@ -395,7 +297,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       newCart[existingIndex].quantity += 1;
       setCart(newCart);
     } else {
-      const { price, ...productWithoutPrice } = product;
+      const { price: catalogPrice, ...productWithoutPrice } = product;
+    void catalogPrice;
       setCart([...cart, { ...productWithoutPrice, selectedSize: size, selectedFlavor: cartFlavor, selectedCustomizations, price: selectedPrice, quantity: 1 }]);
     }
     
@@ -406,6 +309,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const product = products.find(p => p.id === productId);
     if (!product || product.stock <= 0) return { success: false, message: 'Out of stock' };
     if (!product.flavors) return { success: false, message: 'No flavors available' };
+    if (cart.filter(item => item.id === productId).reduce((sum, item) => sum + item.quantity, 0) >= product.stock) return { success: false, message: `Only ${product.stock} boxes available.` };
 
     const totalCookies = selections.reduce((sum, s) => sum + s.quantity, 0);
     if (totalCookies !== boxSize) return { success: false, message: `Please select exactly ${boxSize} cookies` };
@@ -430,7 +334,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       selectedCustomizations.forEach(c => totalPrice += c.price);
     }
 
-    const { price, ...productWithoutPrice } = product;
+    const { price: catalogPrice, ...productWithoutPrice } = product;
+    void catalogPrice;
     const boxItem: CartItem = {
       ...productWithoutPrice,
       selectedSize: 'Normal',
@@ -458,7 +363,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return { success: true, message: 'Item removed' };
     }
     
-    if (newQty > product.stock) {
+    if (newQty + cart.filter((other, i) => i !== index && other.id === item.id).reduce((sum, other) => sum + other.quantity, 0) > product.stock) {
       return { success: false, message: `Sorry, we only have ${product.stock} left in stock.` };
     }
 
@@ -481,126 +386,83 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try { storage = sessionStorage; } catch { /* The active tab can still submit. */ }
       submitOrderRef.current = createOrderSubmitter(storage);
     }
-    const expectedTotal = Math.round((cart.reduce((sum, item) => sum + item.price * item.quantity, 0) + (deliveryMethod === 'pickup' ? 0 : deliveryFee) - discount) * 100) / 100;
+    const expectedTotal = money(money(cart.reduce((sum, item) => sum + item.price * item.quantity, 0)) + (deliveryMethod === 'pickup' ? 0 : deliveryFee) - money(discount));
     const order = await submitOrderRef.current({
       customer: customerInfo, deliveryMethod, paymentMethod, promoCode, expectedTotal,
       items: cart.map(item => ({ id: item.id, quantity: item.quantity, selectedSize: item.selectedSize, price: item.price, ...(item.selectedFlavor ? { selectedFlavor: item.selectedFlavor } : {}), ...(item.boxSize ? { boxSize: item.boxSize, boxFlavors: item.boxFlavors } : {}), selectedCustomizations: item.selectedCustomizations || [] })),
     });
     setOrders(current => [order, ...current.filter(item => item.id !== order.id)]);
-    setProducts(current => current.map(product => ({ ...product, stock: Math.max(0, product.stock - order.items.filter(item => item.id === product.id).reduce((sum, item) => sum + item.quantity, 0)) })));
-    setCart([]);
+    setCart(current => remainingCart(current, order.items));
     return order;
   };
 
-  const updateProduct = async (product: Product) => {
-    await setDoc(doc(db, 'products', product.id), cleanForFirestore(product));
-    setProducts(prev => {
-      const index = prev.findIndex(p => p.id === product.id);
-      if (index >= 0) {
-        const newProducts = [...prev];
-        newProducts[index] = product;
-        return newProducts;
-      } else {
-        return [...prev, product];
-      }
-    });
+  const retryPendingOrder = async () => {
+    let storage: Storage | null = null;
+    try { storage = sessionStorage; } catch { /* No recovery cache. */ }
+    const prepared = pendingCheckout(storage);
+    if (!prepared) throw new Error('There is no previous submission to check.');
+    if (!submitOrderRef.current) submitOrderRef.current = createOrderSubmitter(storage);
+    const { requestId: _id, receiptToken: _token, ...input } = prepared;
+    void _id; void _token;
+    const order = await submitOrderRef.current(input);
+    setOrders(current => [order, ...current.filter(item => item.id !== order.id)]);
+    setCart(current => remainingCart(current, order.items));
+    return order;
+  };
+
+  const updateProduct = async (product: Product, original?: Pick<Product, 'stock' | 'updatedAt'>) => {
+    const reference = doc(db, 'products', product.id);
+    await confirmWrite(runTransaction(db, async transaction => {
+      const current = await transaction.get(reference);
+      const value = reconcileProductEdit(current.exists() ? current.data() as Product : null, product, original);
+      transaction.set(reference, cleanForFirestore(value));
+      return value;
+    }));
   };
 
   const deleteProduct = async (index: number) => {
     const product = products[index];
     if (!product) return;
-    await deleteDoc(doc(db, 'products', product.id));
+    await confirmWrite(deleteDoc(doc(db, 'products', product.id)));
     setProducts(prev => prev.filter(p => p.id !== product.id));
   };
 
-  const updateHeroImage = async (url: string) => {
-    await setDoc(doc(db, 'settings', 'homepage'), { heroImage: url }, { merge: true });
+  const updateHeroImage = async (url: string, animated?: boolean) => {
+    await confirmWrite(setDoc(doc(db, 'settings', 'homepage'), { heroImage: url, ...(animated === undefined ? {} : { heroRotationEnabled: animated }) }, { merge: true }));
+    if (animated !== undefined) setHeroRotationEnabled(animated);
     setHeroImage(url);
-    try { localStorage.setItem('tcc_hero_image', url); } catch (e) {}
+    try { localStorage.setItem('tcc_hero_image', url); } catch { /* Cache is optional. */ }
   };
 
   const updateHeroRotation = async (enabled: boolean) => {
-    await setDoc(doc(db, 'settings', 'homepage'), { heroRotationEnabled: enabled }, { merge: true });
+    await confirmWrite(setDoc(doc(db, 'settings', 'homepage'), { heroRotationEnabled: enabled }, { merge: true }));
     setHeroRotationEnabled(enabled);
-    try { localStorage.setItem('tcc_hero_rotation', JSON.stringify(enabled)); } catch (e) {}
+    try { localStorage.setItem('tcc_hero_rotation', JSON.stringify(enabled)); } catch { /* Cache is optional. */ }
   };
 
   const updatePromoSettings = async (promo: PromoCode) => {
-    await setDoc(doc(db, 'settings', 'promo'), cleanForFirestore(promo));
+    await confirmWrite(setDoc(doc(db, 'settings', 'promo'), cleanForFirestore(promo)));
     setPromoSettings(promo);
   };
 
-  const markOrderFulfilled = (index: number) => {
-    const newOrders = [...orders];
-    newOrders[index].status = 'fulfilled';
-    setOrders(newOrders);
-    // Sync to Firestore
-    setDoc(doc(db, 'orders', newOrders[index].id), cleanForFirestore(newOrders[index])).catch(console.error);
-  };
-
-  const addManualOrder = (data: { customerName: string; total: number; productId: string; quantity: number; notes?: string }) => {
-    const orderId = 'MAN-' + Math.floor(100000 + Math.random() * 900000);
-    const selectedProduct = products.find(p => p.id === data.productId);
-    const itemPrice = data.quantity > 0 ? data.total / data.quantity : data.total;
-
-    const manualOrder: Order = {
-      id: orderId,
-      date: new Date().toISOString(),
-      source: 'manual',
-      customer: {
-        name: data.customerName.trim() || 'Walk-in Customer',
-        phone: '-',
-        email: 'manual-order@offline.local',
-        address: 'Offline sale',
-        notes: data.notes?.trim() || 'Added manually by staff.'
-      },
-      items: [
-        {
-          id: selectedProduct?.id || 'manual-item',
-          name: selectedProduct?.name || 'Manual Sale',
-          description: selectedProduct?.description || 'Offline sale added by admin',
-          stock: 0,
-          image: selectedProduct?.image || 'manual.png',
-          selectedSize: 'Normal',
-          price: itemPrice,
-          quantity: data.quantity
-        }
-      ],
-      total: data.total,
-      status: 'fulfilled'
-    };
-
-    // Save to Firestore
-    setDoc(doc(db, 'orders', orderId), cleanForFirestore(manualOrder)).catch(console.error);
-
-    setOrders([manualOrder, ...orders]);
-    return orderId;
-  };
-
-  const deleteOrder = (orderId: string) => {
-    // Remove from Firestore
-    deleteDoc(doc(db, 'orders', orderId)).catch(console.error);
-    setOrders(orders.filter(order => order.id !== orderId));
-  };
-
   const updatePickupSettings = async (settings: PickupSettings) => {
-    await setDoc(doc(db, 'settings', 'pickup'), cleanForFirestore(settings));
+    await confirmWrite(setDoc(doc(db, 'settings', 'pickup'), cleanForFirestore(settings)));
     setPickupSettings(settings);
-    try { localStorage.setItem('tcc_pickup_settings', JSON.stringify(settings)); } catch (e) {}
+    try { localStorage.setItem('tcc_pickup_settings', JSON.stringify(settings)); } catch { /* Cache is optional. */ }
   };
 
   const addCategory = async (category: Category) => {
-    await setDoc(doc(db, 'categories', category.id), cleanForFirestore(category));
-    setCategories(prev => [...prev, category]);
+    await confirmWrite(setDoc(doc(db, 'categories', category.id), cleanForFirestore(category)));
+    setCategories(prev => prev.some(item => item.id === category.id) ? prev : [...prev, category]);
   };
 
   const updateCategory = async (category: Category) => {
-    await setDoc(doc(db, 'categories', category.id), cleanForFirestore(category));
+    await confirmWrite(setDoc(doc(db, 'categories', category.id), cleanForFirestore(category)));
     setCategories(prev => prev.map(c => c.id === category.id ? category : c));
   };
 
   const deleteCategory = async (id: string) => {
-    await deleteDoc(doc(db, 'categories', id));
+    await confirmWrite(deleteDoc(doc(db, 'categories', id)));
     setCategories(prev => prev.filter(c => c.id !== id));
   };
 
@@ -610,7 +472,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     <CartContext.Provider value={{
       products, cart, orders, heroImage, heroRotationEnabled, promoSettings, categories, pickupSettings,
       addToCart, addBoxToCart, updateQuantity, removeFromCart, placeOrder,
-      updateProduct, deleteProduct, updateHeroImage, updateHeroRotation, markOrderFulfilled, addManualOrder, deleteOrder, updatePromoSettings, updatePickupSettings,
+      updateProduct, deleteProduct, updateHeroImage, updateHeroRotation, retryPendingOrder, updatePromoSettings, updatePickupSettings,
       addCategory, updateCategory, deleteCategory
     }}>
       {children}

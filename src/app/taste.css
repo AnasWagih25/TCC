@@ -1011,3 +1011,9 @@
     transition: none;
   }
 }
+
+.checkout-payment-label { display: grid; gap: 9px; font-size: 14px; margin-block: 20px; }
+.checkout-payment-label select { min-height: 48px; padding: 10px 14px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; font: 16px var(--font-body); }
+.checkout-payment-label small { font-size: 12px; line-height: 1.6; color: var(--muted); }
+
+.checkout-recovery { padding: 18px; margin-block: 18px; background: var(--tone-soft); border-radius: 10px; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
