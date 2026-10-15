@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "src/lib/order-email.ts"
+        ],
+        "createdAt": "2026-10-15T22:43:01.742Z",
+        "reason": "Agent: DESIGN.md documents emailBody Arial as an intentional HTML email compatibility fallback; storefront and dashboard retain their brand fonts."
+      }
+    ]
+  }
+}
