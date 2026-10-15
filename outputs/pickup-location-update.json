@@ -1,0 +1,8 @@
+{
+  "fields": {
+    "address": { "stringValue": "2GHX+38V, Second New Cairo, Cairo Governorate 4761201" },
+    "lat": { "doubleValue": 30.0277375 },
+    "lng": { "doubleValue": 31.5482969 },
+    "mapUrl": { "stringValue": "https://www.google.com/maps/dir/?api=1&destination=30.0277375,31.5482969" }
+  }
+}

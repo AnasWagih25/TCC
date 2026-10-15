@@ -59,8 +59,7 @@ export default function CheckoutPage() {
     if (!location) return;
 
     // Dispatch Origin: Second New Cairo (القاهرة الجديدة ثان)
-    const DISPATCH_ORIGIN = { lat: 30.0450, lng: 31.4800 };
-    const distance = getDistanceFromLatLonInKm(location.lat, location.lng, DISPATCH_ORIGIN.lat, DISPATCH_ORIGIN.lng);
+    const distance = getDistanceFromLatLonInKm(location.lat, location.lng, pickupSettings.lat, pickupSettings.lng);
 
     // Distance-based fee starting from Second New Cairo:
     // 70 EGP in close proximity, up to 100 EGP for further locations
@@ -89,7 +88,7 @@ export default function CheckoutPage() {
       setDeliveryFee(0);
       setDeliveryZoneName('');
     }
-  }, [location]);
+  }, [location, pickupSettings.lat, pickupSettings.lng]);
 
   const handleApplyPromo = () => {
     const inputCode = promoCodeInput.trim().toUpperCase();

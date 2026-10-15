@@ -59,7 +59,7 @@ export default function ContactPage() {
           hello? We’d love to hear from you.
         </p>
         <div className="contact-details">
-          <h2>Find us in New Cairo</h2>
+          <h2>Find us in Second New Cairo</h2>
           <p>
             {pickupSettings.address}
             <br />

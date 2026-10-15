@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, doc, getDocs, getDoc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { defaultPickupSettings, resolvePickupSettings, type PickupSettings } from '@/lib/pickup';
+export { defaultPickupSettings, type PickupSettings } from '@/lib/pickup';
 
 export type Category = {
   id: string;
@@ -74,18 +76,10 @@ export type PromoCode = {
   isActive: boolean;
 };
 
-export type PickupSettings = {
-  address: string;
-  lat: number;
-  lng: number;
-  mapUrl: string;
-  hoursNotice: string;
-};
-
 export function parseGoogleMapsUrl(inputUrl: string): { lat: number; lng: number; mapUrl: string } {
   const url = inputUrl.trim();
-  let lat = 30.0444;
-  let lng = 31.2357;
+  let lat = defaultPickupSettings.lat;
+  let lng = defaultPickupSettings.lng;
 
   if (!url) {
     return { lat, lng, mapUrl: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}` };
@@ -136,14 +130,6 @@ export function cleanForFirestore(obj: any): any {
   }
   return obj;
 }
-
-export const defaultPickupSettings: PickupSettings = {
-  address: 'The Cookie Concept Bakery Branch, Second New Cairo, Cairo, Egypt',
-  lat: 30.0450,
-  lng: 31.4800,
-  mapUrl: 'https://www.google.com/maps/search/?api=1&query=30.0450,31.4800',
-  hoursNotice: 'Next day from 12:00 PM to 8:00 PM only',
-};
 
 export type Order = {
   id: string;
@@ -245,7 +231,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
     // Load cached pickup settings
     const savedPickup = localStorage.getItem('tcc_pickup_settings');
-    if (savedPickup) setPickupSettings(JSON.parse(savedPickup));
+    if (savedPickup) {
+      setPickupSettings(resolvePickupSettings(JSON.parse(savedPickup)));
+    }
 
     // Unblock the UI immediately!
     setIsLoaded(true);
@@ -306,7 +294,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // Fetch pickup settings
         const pickupSnap = await getDoc(doc(db, 'settings', 'pickup'));
         if (pickupSnap.exists()) {
-          const livePickup = pickupSnap.data() as PickupSettings;
+          const livePickup = resolvePickupSettings(pickupSnap.data() as PickupSettings);
           setPickupSettings(livePickup);
           try { localStorage.setItem('tcc_pickup_settings', JSON.stringify(livePickup)); } catch (e) {}
         }

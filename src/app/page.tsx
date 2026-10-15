@@ -152,7 +152,7 @@ export default function Home() {
             <MapPin strokeWidth={1.3} />
             <h3>We’ll take it from here</h3>
             <p>
-              Choose next-day delivery or pickup in New Cairo. Your cookie
+              Choose next-day delivery or pickup in Second New Cairo. Your cookie
               moment is on its way.
             </p>
           </div>
@@ -163,7 +163,7 @@ export default function Home() {
       </section>
       <Reviews compact />
       <section className="pickup-note section-wrap">
-        <span>See you in New Cairo.</span>
+        <span>See you in Second New Cairo.</span>
         <p>
           {pickupSettings.hoursNotice}
           <br />

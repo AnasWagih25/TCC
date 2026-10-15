@@ -7,7 +7,7 @@ import { updateProfile } from 'firebase/auth';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { storage, db } from '@/lib/firebase';
-import { useCart, Product, Order, Flavor, resolveImageUrl, Category, parseGoogleMapsUrl } from '@/context/CartContext';
+import { useCart, Product, Order, Flavor, resolveImageUrl, Category, parseGoogleMapsUrl, defaultPickupSettings } from '@/context/CartContext';
 import { Cookie, TrendingUp, Package, Image as ImageIcon, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import OptimizedImage from '@/components/OptimizedImage';
 import ReviewAdmin from '@/components/ReviewAdmin';
@@ -98,13 +98,7 @@ export default function AdminDashboard() {
 
   const [heroUrlInput, setHeroUrlInput] = useState('');
 
-  const [pickupForm, setPickupForm] = useState({
-    address: '',
-    lat: 30.0444,
-    lng: 31.2357,
-    mapUrl: 'https://www.google.com/maps/search/?api=1&query=30.0444,31.2357',
-    hoursNotice: 'Next day from 12:00 PM to 8:00 PM only'
-  });
+  const [pickupForm, setPickupForm] = useState(defaultPickupSettings);
 
   useEffect(() => {
     if (promoSettings) {
@@ -930,7 +924,7 @@ export default function AdminDashboard() {
                     <input 
                       type="text" 
                       required
-                      placeholder="e.g. The Cookie Concept Bakery Branch, New Cairo, Cairo, Egypt" 
+                      placeholder="2GHX+38V, Second New Cairo, Cairo Governorate 4761201" 
                       value={pickupForm.address} 
                       onChange={e => setPickupForm({...pickupForm, address: e.target.value})} 
                     />
@@ -940,7 +934,7 @@ export default function AdminDashboard() {
                     <input 
                       type="text" 
                       required
-                      placeholder="Paste Google Maps link (e.g. https://www.google.com/maps/place/30.0444,31.2357)" 
+                      placeholder="https://www.google.com/maps/dir/?api=1&destination=30.0277375,31.5482969" 
                       value={pickupForm.mapUrl || ''} 
                       onChange={e => {
                         const urlVal = e.target.value;

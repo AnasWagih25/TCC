@@ -139,7 +139,7 @@ export default function Cart() {
                 <p>
                   Next-day delivery: EGP 70–100, depending on your location.
                 </p>
-                <p>Or pick up in New Cairo, at no delivery charge.</p>
+                <p>Or pick up in Second New Cairo, at no delivery charge.</p>
               </div>
               <div className="summary-row total">
                 <span>Subtotal</span>
