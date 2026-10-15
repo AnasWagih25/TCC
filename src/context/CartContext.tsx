@@ -211,22 +211,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [heroImage, setHeroImage] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const savedHero = localStorage.getItem('tcc_hero_image');
-      if (savedHero) return savedHero;
-    }
-    return '/images/preview.png';
-  });
-  const [heroRotationEnabled, setHeroRotationEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const savedRot = localStorage.getItem('tcc_hero_rotation');
-      if (savedRot !== null) {
-        try { return JSON.parse(savedRot); } catch (e) {}
-      }
-    }
-    return true;
-  });
+  const [heroImage, setHeroImage] = useState('/images/preview.png');
+  const [heroRotationEnabled, setHeroRotationEnabled] = useState(true);
   const [promoSettings, setPromoSettings] = useState<PromoCode | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [pickupSettings, setPickupSettings] = useState<PickupSettings>(defaultPickupSettings);
@@ -305,10 +291,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const heroSnap = await getDoc(doc(db, 'settings', 'homepage'));
         if (heroSnap.exists()) {
           const heroData = heroSnap.data();
-          if (heroData.heroImage) setHeroImage(heroData.heroImage);
+          if (typeof heroData.heroImage === 'string' && heroData.heroImage.trim()) setHeroImage(heroData.heroImage);
           if (heroData.heroRotationEnabled !== undefined) setHeroRotationEnabled(heroData.heroRotationEnabled);
           // Cache hero image in localStorage
-          try { localStorage.setItem('tcc_hero_image', heroData.heroImage); } catch (e) {}
+          try { if (typeof heroData.heroImage === 'string' && heroData.heroImage.trim()) localStorage.setItem('tcc_hero_image', heroData.heroImage); } catch (e) {}
         }
 
         // Fetch promo settings

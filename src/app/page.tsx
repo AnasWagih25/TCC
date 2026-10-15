@@ -1,217 +1,178 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Star, ChefHat, Truck, Cookie, Sparkles, Copy, Check, X } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
-import ProductImageSlider from '@/components/ProductImageSlider';
-import OptimizedImage from '@/components/OptimizedImage';
+import Link from "next/link";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Cookie,
+  MapPin,
+  Package,
+} from "lucide-react";
+import { useCart } from "@/context/CartContext";
+import OptimizedImage from "@/components/OptimizedImage";
+import Reviews from "@/components/Reviews";
+import HeroShowcase from "@/components/HeroShowcase";
+import StorefrontMotion from "@/components/StorefrontMotion";
 
 export default function Home() {
-  const router = useRouter();
-  const { products, heroImage, heroRotationEnabled } = useCart();
-  const featuredProducts = products.slice(0, 3);
-  const [showSecretQuirkModal, setShowSecretQuirkModal] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
-
-  const handleCookieClick = () => {
-    setShowSecretQuirkModal(true);
-  };
-
-  const handleCopyCode = () => {
-    if (typeof window !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText('Quirk');
-    }
-    setCopiedCode(true);
-    setTimeout(() => {
-      setCopiedCode(false);
-      setShowSecretQuirkModal(false);
-      router.push('/shop');
-    }, 1200);
-  };
-
+  const { products, categories, pickupSettings } = useCart();
+  const featured = products.slice(0, 3);
   return (
-    <div className="page active" id="homePage">
-      {/* Hero */}
-      <header className="hero" style={{ position: 'relative', overflow: 'hidden', background: 'var(--brown)' }}>
-        <div className="hero-blob"></div>
-        <div className="hero-container">
-          <div className="hero-text" style={{ position: 'relative', zIndex: 10 }}>
-            <div className="hero-badge" style={{ backgroundColor: 'var(--pink)', color: 'var(--brown)', padding: '8px 20px', borderRadius: '50px', letterSpacing: '1px', fontWeight: 700 }}>Freshly Baked Daily</div>
-            <h1 className="hero-title" style={{ fontSize: 'clamp(3.5rem, 7.5vw, 6.5rem)', lineHeight: 0.95, color: '#FFFFFF' }}>
-              BAKING <br />
-              <span style={{ color: 'var(--pink)' }}>ENDLESS</span><br />
-              HAPPINESS
-            </h1>
-            <p className="hero-subtitle" style={{ fontSize: '1.2rem', marginTop: '20px', fontWeight: 500, color: 'var(--pink-light)' }}>
-              Artisan cookies made with premium ingredients, baked fresh daily, and delivered straight to your door. Indulge in perfection.
-            </p>
-            <div className="hero-buttons">
-              <Link href="/shop" className="btn btn-primary">Order Your Box Today</Link>
+    <div className="home-new taste-storefront">
+      <StorefrontMotion />
+      <HeroShowcase />
+      <section className="section-wrap fresh-picks" id="fresh-picks">
+        <div className="menu-discovery">
+          <div className="menu-discovery-title">
+            <h2>
+              Your next{" "}
+              <span className="heading-image">
+                <OptimizedImage
+                  src="/images/classic1.png"
+                  alt=""
+                  fill
+                  sizes="100px"
+                />
+              </span>
+              <br />
+              <em>happy place.</em>
+            </h2>
+            <div>
+              <p>
+                Meet a few of our cookie concepts.
+                <br />
+                The hardest part? Choosing just one.
+              </p>
+              <Link className="text-link" href="/shop">
+                Explore the menu <ArrowUpRight size={18} />
+              </Link>
             </div>
           </div>
-          <div className="hero-image-presentation" style={{ position: 'relative', zIndex: 10 }}>
-            <div 
-              className={`hero-cookie-wrapper ${heroRotationEnabled ? 'rotate-360-slow' : ''}`}
-              onClick={handleCookieClick}
-              style={{ cursor: 'pointer' }}
-              title="Click the spinning cookie for a secret!"
-            >
-              <OptimizedImage 
-                src={heroImage} 
-                alt="Premium Artisan Cookie" 
-                priority={true}
-                fill
-                objectFit="contain"
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="hero-cookie-premium"
-                style={heroRotationEnabled ? undefined : { transform: 'rotate(15deg)' }} 
-              />
-            </div>
-            <div className="sticker" style={{ background: '#FFFFFF', color: 'var(--brown)', transform: 'rotate(-5deg)' }}>LOVE AT<br />FIRST<br />BITE</div>
-          </div>
-        </div>
-      </header>
-
-      {/* About */}
-      <section className="about" id="homePage-about" style={{ position: 'relative', background: 'var(--brown)', padding: '120px 24px' }}>
-        <div className="wavy-border-top" style={{ position: 'absolute', top: 0, left: 0, right: 0 }}></div>
-        <div className="section-container" style={{ position: 'relative', zIndex: 2 }}>
-          <div className="section-header">
-            <h2 className="section-title" style={{ fontSize: '3rem', color: '#FFFFFF' }}>Turning Dough Into<br />Delicious Fun and Yum!</h2>
-            <p className="section-subtitle" style={{ color: 'var(--pink-light)' }}>We believe that every cookie should be an experience. Packed with flavor, baked with care.</p>
-          </div>
-          <div className="about-grid">
-            <div className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF', transform: 'rotate(-1deg)' }}>
-              <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}><Star size={28} color="var(--brown)" strokeWidth={2.5} /></div>
-              <h3 style={{ fontSize: '1.5rem', color: '#FFFFFF' }}>Premium Ingredients</h3>
-              <p style={{ color: 'var(--pink-light)' }}>Pure &amp; simple. Naturally fresh, nothing artificial. Vibrant goodness in every bite.</p>
-            </div>
-            <div className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF', transform: 'translateY(16px) rotate(1deg)' }}>
-              <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}><ChefHat size={28} color="var(--brown)" strokeWidth={2} /></div>
-              <h3 style={{ fontSize: '1.5rem', color: '#FFFFFF' }}>Artisan Crafted</h3>
-              <p style={{ color: 'var(--pink-light)' }}>Every cookie is mixed and baked by hand ensuring perfect texture every time.</p>
-            </div>
-            <div className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF', transform: 'rotate(-1deg)' }}>
-              <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}><Truck size={28} color="var(--brown)" strokeWidth={2} /></div>
-              <h3 style={{ fontSize: '1.5rem', color: '#FFFFFF' }}>Delivered Fresh</h3>
-              <p style={{ color: 'var(--pink-light)' }}>Baked fresh the morning of your delivery. Guaranteed baked daily just for you.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Items */}
-      <section className="featured">
-        <div className="section-container">
-          <div className="section-header">
-            <span className="section-label">Fan Favorites</span>
-            <h2 className="section-title">Most Loved Concepts</h2>
-          </div>
-          <div className="featured-grid">
-            {featuredProducts.length === 0 ? (
-              <div className="shop-empty" style={{ gridColumn: '1 / -1' }}>
-                <div className="empty-icon"><Cookie size={48} color="var(--brown-light)" strokeWidth={1.5} /></div>
-                <h3>No cookies baked today</h3>
-              </div>
-            ) : (
-              featuredProducts.map((p) => {
-                const isOutOfStock = p.stock <= 0;
-                const isLowStock = p.stock > 0 && p.stock <= 10;
-                return (
-                  <div key={p.id} className="product-card">
-                    <div className="product-img-wrapper">
-                      {isOutOfStock ? (
-                        <span className="product-stock-badge stock-out">Sold Out</span>
-                      ) : isLowStock ? (
-                        <span className="product-stock-badge stock-low">Only {p.stock} left</span>
-                      ) : (
-                        <span className="product-stock-badge stock-in">In Stock</span>
-                      )}
-                      <div style={{ padding: '1rem', height: '100%' }}>
-                        <ProductImageSlider images={p.images || [p.image]} alt={p.name} />
-                      </div>
-                    </div>
-                    <div className="product-info">
-                      <h3 className="product-name">{p.name}</h3>
-                      <p className="product-desc">{p.description}</p>
-                      <div className="product-footer">
-                        <span className="product-price"><span className="currency">from EGP </span>{Number(p.price.mini).toFixed(2)}</span>
-                        <Link href="/shop" className="btn btn-sm btn-secondary">
-                          View Details
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-          <div style={{ textAlign: 'center', marginTop: '40px' }}>
-            <Link href="/shop" className="btn btn-primary">View Full Menu</Link>
+          <div className="featured-products">
+            {featured.map((product, index) => (
+              <Link
+                key={product.id}
+                href={`/shop?product=${encodeURIComponent(product.id)}`}
+                className="feature-product"
+              >
+                <div className={`feature-product-image flavor-${index}`}>
+                  <OptimizedImage
+                    src={product.images?.[0] || product.image}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 700px) 90vw, 33vw"
+                  />
+                  <span className="product-corner">
+                    <ArrowUpRight size={21} />
+                  </span>
+                  {product.stock <= 0 && (
+                    <span className="sold-label">Sold out</span>
+                  )}
+                </div>
+                <div className="feature-product-meta">
+                  <h3>{product.name}</h3>
+                  <span>
+                    EGP{" "}
+                    {categories.find((category) => category.id === product.type)
+                      ?.isBoxBuilder && product.boxPricing?.length
+                      ? Math.min(
+                          ...product.boxPricing.map((option) => option.price),
+                        )
+                      : product.price.mini > 0
+                        ? product.price.mini
+                        : product.price.normal}
+                    <small>
+                      {categories.find(
+                        (category) => category.id === product.type,
+                      )?.isBoxBuilder
+                        ? " / from"
+                        : product.price.mini > 0
+                          ? " / mini"
+                          : ""}
+                    </small>
+                  </span>
+                </div>
+                <p>{product.description}</p>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
-
-      {/* Secret Quirk Easter Egg Modal */}
-      <div className={`modal-overlay ${showSecretQuirkModal ? 'active' : ''}`} onClick={() => setShowSecretQuirkModal(false)}>
-        <div className="modal secret-quirk-modal" onClick={(e) => e.stopPropagation()}>
-          <button 
-            onClick={() => setShowSecretQuirkModal(false)}
-            className="modal-close-btn"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-
-          <div className="secret-quirk-icon">
-            <Sparkles size={36} color="var(--brown)" />
-          </div>
-
-          <h3 className="secret-quirk-title">
-            Shhh... You Found the Secret Quirk! 🍪✨
-          </h3>
-
-          <p className="secret-quirk-desc">
-            Look at you clicking around! Curiosity pays off—here is <strong>5% OFF</strong> your order for finding this secret quirk.
+      <section className="story-preview section-wrap taste-story">
+        <div className="story-photo">
+          <OptimizedImage
+            src="/images/classic1.png"
+            alt="Belgian milk chocolate cookie cake, baked by The Cookie Concept"
+            fill
+            sizes="(max-width: 700px) 100vw, 45vw"
+          />
+        </div>
+        <div className="story-copy">
+          <h2>
+            A little dough.
+            <br />A lot of heart.
+          </h2>
+          <p>
+            It started with weekend baking for friends and family. Today, that
+            same love goes into every concept we make.
           </p>
-
-          <div className="secret-quirk-box">
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: '0.72rem', color: 'var(--pink-light)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Secret Promo Code</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FFFFFF', fontFamily: 'var(--font-fredoka)' }}>Quirk</div>
-            </div>
-            <button 
-              onClick={handleCopyCode}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '12px',
-                background: copiedCode ? '#2ecc71' : 'var(--pink)',
-                color: copiedCode ? '#FFFFFF' : 'var(--brown)',
-                border: 'none',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {copiedCode ? <><Check size={16} /> Copied!</> : <><Copy size={16} /> Copy Code</>}
-            </button>
-          </div>
-
-          <button 
-            onClick={handleCopyCode}
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '12px 24px', fontSize: '1rem', fontWeight: 700 }}
-          >
-            Claim 5% Off &amp; Order Now 🛒
-          </button>
+          <p>
+            Handcrafted in small batches, with thoughtful ingredients and a soft
+            spot for really good chocolate. This is our kind of comfort food.
+          </p>
+          <Link href="/about" className="text-link">
+            A taste of our story <ArrowUpRight size={18} />
+          </Link>
         </div>
-      </div>
+      </section>
+      <section className="how-it-works section-wrap taste-ordering" data-reveal>
+        <h2>
+          Good things
+          <br />
+          <em>come in boxes.</em>
+        </h2>
+        <div className="ordering-steps">
+          <div>
+            <Cookie strokeWidth={1.3} />
+            <h3>Find your concept</h3>
+            <p>
+              A classic cookie, a cookie cake, or a box made your way. Start
+              with what you love.
+            </p>
+          </div>
+          <div>
+            <Package strokeWidth={1.3} />
+            <h3>Make it yours</h3>
+            <p>
+              Choose your size, mix your flavors, and add a little something
+              extra.
+            </p>
+          </div>
+          <div>
+            <MapPin strokeWidth={1.3} />
+            <h3>We’ll take it from here</h3>
+            <p>
+              Choose next-day delivery or pickup in New Cairo. Your cookie
+              moment is on its way.
+            </p>
+          </div>
+        </div>
+        <Link className="text-link" href="/shop">
+          Explore the menu <ArrowRight size={18} />
+        </Link>
+      </section>
+      <Reviews compact />
+      <section className="pickup-note section-wrap">
+        <span>See you in New Cairo.</span>
+        <p>
+          {pickupSettings.hoursNotice}
+          <br />
+          Delivery or pickup, choose what works for you.
+        </p>
+        <Link href="/contact" className="text-link">
+          Say hello <ArrowUpRight size={18} />
+        </Link>
+      </section>
     </div>
   );
 }

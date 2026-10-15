@@ -1,196 +1,163 @@
-'use client';
-
-import React from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ShoppingCart, Trash2 } from 'lucide-react';
-import { useCart, resolveImageUrl } from '@/context/CartContext';
-import OptimizedImage from '@/components/OptimizedImage';
-
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { ArrowUpRight, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { useCart } from "@/context/CartContext";
+import OptimizedImage from "@/components/OptimizedImage";
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart } = useCart();
-  const router = useRouter();
-
-  let subtotal = 0;
-  cart.forEach((item) => {
-    subtotal += item.price * item.quantity;
-  });
-
+  const [error, setError] = useState("");
+  const subtotal = cart.reduce(
+    (total, item) => total + item.price * item.quantity,
+    0,
+  );
+  const changeQuantity = (index: number, change: number) => {
+    const result = updateQuantity(index, change);
+    setError(result.success ? "" : result.message);
+  };
   return (
     <div className="page active" id="cartPage">
-      <div className="cart-page polka-bg" style={{ minHeight: '85vh', paddingBottom: '80px' }}>
-        <div className="section-container">
-          <div className="section-header" style={{ marginBottom: '32px' }}>
-            <h2 className="section-title" style={{ color: '#FFFFFF' }}>Your Cart</h2>
-          </div>
-
-          <div id="cartContent">
-            {cart.length === 0 ? (
-              <div className="cart-empty" style={{
-                maxWidth: '600px',
-                margin: '0 auto',
-                background: 'var(--card-brown)',
-                padding: '48px 32px',
-                borderRadius: '24px',
-                border: '2px solid var(--pink)',
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)',
-                textAlign: 'center',
-                color: '#FFFFFF'
-              }}>
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: 'var(--pink)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px',
-                  color: 'var(--brown)',
-                  boxShadow: '0 8px 20px rgba(243, 195, 206, 0.3)'
-                }}>
-                  <ShoppingCart size={44} color="var(--brown)" strokeWidth={2} />
-                </div>
-                <h3 style={{ fontSize: '2rem', marginBottom: '10px', color: '#FFFFFF', fontWeight: 700 }}>Your cart is empty</h3>
-                <p style={{ fontSize: '1.05rem', color: 'var(--pink-light)', marginBottom: '28px', lineHeight: 1.5 }}>
-                  Looks like you haven't added any delicious concepts yet.
-                </p>
-                <Link href="/shop" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: '1rem', fontWeight: 700 }}>
-                  Start Shopping 🛒
-                </Link>
-              </div>
-            ) : (
-              <div className="cart-layout">
-                <div className="cart-items">
-                  {cart.map((item, index) => (
-                    <div key={`${item.id}-${index}`} className="cart-item">
-                      <div style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0 }}>
-                        <OptimizedImage src={item.image} alt={item.name} fill sizes="70px" />
-                      </div>
-                      <div className="cart-item-details">
-                        <h4 className="cart-item-name">
-                          {item.name}
-                          {item.boxSize ? (
-                            <span style={{ fontSize: '0.82rem', color: 'var(--brown-light)', marginLeft: '6px' }}>(Box of {item.boxSize})</span>
-                          ) : (
-                            <span style={{ fontSize: '0.85rem', color: 'var(--brown-light)', marginLeft: '6px' }}>({item.selectedFlavor || item.selectedSize})</span>
-                          )}
-                        </h4>
-                        {item.boxFlavors && item.boxFlavors.length > 0 && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--brown-light)', marginTop: '4px', lineHeight: 1.6 }}>
-                            {item.boxFlavors.map(bf => (
-                              <span key={bf.name} style={{ display: 'inline-block', background: 'rgba(99, 61, 45, 0.08)', color: 'var(--brown)', padding: '2px 8px', borderRadius: '50px', marginRight: '4px', marginBottom: '2px', fontWeight: 500 }}>
-                                {bf.name} ×{bf.quantity}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {item.selectedCustomizations && item.selectedCustomizations.length > 0 && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--brown-light)', marginTop: '4px', lineHeight: 1.6 }}>
-                            {item.selectedCustomizations.map(c => (
-                              <span key={c.name} style={{ display: 'inline-flex', flexDirection: 'column', background: 'rgba(99, 61, 45, 0.08)', color: 'var(--brown)', padding: '2px 8px', borderRadius: '8px', marginRight: '4px', marginBottom: '4px', gap: '2px', fontWeight: 500 }}>
-                                <span>+ {c.name}</span>
-                                {c.text && <span style={{ fontSize: '0.65rem', fontStyle: 'italic', opacity: 0.8 }}>"{c.text}"</span>}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div className="cart-item-price">EGP {Number(item.price).toFixed(2)}{item.boxSize ? '' : ' each'}</div>
-                        <div className="quantity-controls">
-                          <button className="qty-btn" onClick={() => updateQuantity(index, -1)}>-</button>
-                          <span className="qty-value">{item.quantity}</span>
-                          <button className="qty-btn" onClick={() => updateQuantity(index, 1)}>+</button>
-                        </div>
-                      </div>
-                      <button className="cart-item-remove" onClick={() => removeFromCart(index)} title="Remove"><Trash2 size={18} /></button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="cart-summary">
-                  <h3>Order Summary</h3>
-                  <div className="summary-row">
-                    <span>Subtotal</span>
-                    <span>EGP {subtotal.toFixed(2)}</span>
-                  </div>
-
-                  <div className="summary-row">
-                    <span>Delivery</span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--pink-light)' }}>EGP 70 - 100 (Dispatched from Second New Cairo)</span>
-                  </div>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    margin: '0 0 10px',
-                    padding: '10px 14px',
-                    border: '1.5px solid var(--pink)',
-                    borderRadius: '12px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                    fontSize: '0.88rem',
-                    color: '#FFFFFF',
-                    lineHeight: 1.4,
-                  }}>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--pink)',
-                      color: 'var(--brown)',
-                      fontSize: '0.8rem',
-                      fontWeight: 800,
-                      flexShrink: 0,
-                    }}>!</span>
-                    <span style={{ fontWeight: 600 }}>Next-day delivery (70 EGP close proximity, up to 100 EGP)</span>
-                  </div>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    margin: '0 0 14px',
-                    padding: '10px 14px',
-                    border: '1.5px solid var(--pink)',
-                    borderRadius: '12px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-                    fontSize: '0.88rem',
-                    color: '#FFFFFF',
-                    lineHeight: 1.4,
-                  }}>
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--pink)',
-                      color: 'var(--brown)',
-                      fontSize: '0.8rem',
-                      fontWeight: 800,
-                      flexShrink: 0,
-                    }}>$</span>
-                    <span style={{ fontWeight: 600 }}>Payment: Cash on Delivery, Instapay, or Telda</span>
-                  </div>
-                  <div className="summary-row total">
-                    <span>Total</span>
-                    <span style={{ fontSize: '1rem' }}>EGP {subtotal.toFixed(2)} + Delivery (70-100 EGP)</span>
-                  </div>
-                  <button
-                    className="btn btn-primary"
-                    style={{ width: '100%', marginTop: '20px' }}
-                    onClick={() => router.push('/checkout')}
-                  >
-                    Proceed to Checkout
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+      <section className="cart-page section-wrap">
+        <div className="section-header">
+          <h1 className="section-title">Your bag of joy.</h1>
+          <p className="section-subtitle">
+            {cart.length
+              ? "A few very good choices. Let’s make them yours."
+              : "Something delicious belongs here."}
+          </p>
         </div>
-      </div>
+        {!cart.length ? (
+          <div className="cart-empty">
+            <ShoppingBag
+              size={45}
+              strokeWidth={1.2}
+              style={{ margin: "0 auto 25px" }}
+            />
+            <h3>Good things are worth adding.</h3>
+            <p>Find your favorite concept and we’ll keep it here for you.</p>
+            <Link href="/shop" className="button-chocolate">
+              Explore the menu{" "}
+              <span>
+                <ArrowUpRight size={20} />
+              </span>
+            </Link>
+          </div>
+        ) : (
+          <div className="cart-layout">
+            <div>
+              <div className="cart-items">
+                {cart.map((item, index) => (
+                  <article className="cart-item" key={`${item.id}-${index}`}>
+                    <div className="cart-photo">
+                      <OptimizedImage
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        sizes="100px"
+                      />
+                    </div>
+                    <div className="cart-item-details">
+                      <h2 className="cart-item-name">{item.name}</h2>
+                      <p className="cart-variant">
+                        {item.boxSize
+                          ? `Box of ${item.boxSize}`
+                          : item.selectedFlavor || item.selectedSize}
+                      </p>
+                      {item.boxFlavors?.map((flavor) => (
+                        <p className="cart-extra" key={flavor.name}>
+                          {flavor.name} × {flavor.quantity}
+                        </p>
+                      ))}
+                      {item.selectedCustomizations?.map((extra) => (
+                        <p className="cart-extra" key={extra.name}>
+                          + {extra.name}
+                          {extra.text ? `: ${extra.text}` : ""}
+                        </p>
+                      ))}
+                      <div className="cart-item-price">
+                        EGP {item.price.toFixed(2)} each
+                      </div>
+                      <div className="quantity-controls">
+                        <button
+                          className="qty-btn"
+                          aria-label={`Decrease ${item.name} quantity`}
+                          onClick={() => changeQuantity(index, -1)}
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span className="qty-value" aria-live="polite">
+                          {item.quantity}
+                        </span>
+                        <button
+                          className="qty-btn"
+                          aria-label={`Increase ${item.name} quantity`}
+                          onClick={() => changeQuantity(index, 1)}
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="cart-line-end">
+                      <strong>
+                        EGP {(item.price * item.quantity).toFixed(2)}
+                      </strong>
+                      <button
+                        className="cart-item-remove"
+                        aria-label={`Remove ${item.name}`}
+                        onClick={() => removeFromCart(index)}
+                      >
+                        <Trash2 size={17} strokeWidth={1.4} />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              {error && (
+                <p className="form-error" role="alert">
+                  {error}
+                </p>
+              )}
+              <Link
+                href="/shop"
+                className="text-link"
+                style={{ marginTop: 22 }}
+              >
+                A little more cookie browsing <ArrowUpRight size={17} />
+              </Link>
+            </div>
+            <aside className="cart-summary">
+              <h3>The happy total.</h3>
+              <div className="summary-row">
+                <span>Subtotal</span>
+                <span>EGP {subtotal.toFixed(2)}</span>
+              </div>
+              <div className="summary-row">
+                <span>Delivery</span>
+                <span>Calculated at checkout</span>
+              </div>
+              <div className="cart-delivery-note">
+                <p>
+                  Next-day delivery: EGP 70–100, depending on your location.
+                </p>
+                <p>Or pick up in New Cairo, at no delivery charge.</p>
+              </div>
+              <div className="summary-row total">
+                <span>Subtotal</span>
+                <span>EGP {subtotal.toFixed(2)}</span>
+              </div>
+              <Link href="/checkout" className="button-chocolate cart-checkout">
+                Continue to checkout{" "}
+                <span>
+                  <ArrowUpRight size={20} />
+                </span>
+              </Link>
+              <p className="cart-payment-note">
+                Cash on delivery / pickup, Instapay or Telda.
+              </p>
+            </aside>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

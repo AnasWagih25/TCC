@@ -1,95 +1,73 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { resolveImageUrl } from '@/context/CartContext';
+import { useState, type CSSProperties, type MouseEvent } from "react";
+import Image from "next/image";
+import { resolveImageUrl } from "@/context/CartContext";
 
-interface OptimizedImageProps {
+type OptimizedImageProps = {
   src: string;
   alt: string;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   fill?: boolean;
   width?: number;
   height?: number;
   priority?: boolean;
   sizes?: string;
-  objectFit?: 'cover' | 'contain' | 'fill' | 'none';
-  loading?: 'lazy' | 'eager';
-  onClick?: (e: React.MouseEvent) => void;
-}
+  objectFit?: CSSProperties["objectFit"];
+  loading?: "lazy" | "eager";
+  fallbackSrc?: string;
+  onClick?: (event: MouseEvent) => void;
+};
 
+/** Keep uploaded, inline and local images on the same sizing and fallback path. */
 export default function OptimizedImage({
   src,
   alt,
   className,
   style,
   fill = false,
-  width,
-  height,
+  width = 400,
+  height = 400,
   priority = false,
-  sizes = '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
-  objectFit = 'cover',
+  sizes = "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
+  objectFit = "cover",
   loading,
+  fallbackSrc = "/images/preview.png",
   onClick,
 }: OptimizedImageProps) {
-  const [loaded, setLoaded] = useState(false);
-  const resolved = resolveImageUrl(src);
-
-  // If data URI or blob, use native img tag
-  if (!resolved || resolved.startsWith('data:') || resolved.startsWith('blob:')) {
-    return (
-      <img
-        src={resolved || '/images/preview.png'}
-        alt={alt}
-        className={className}
-        style={{
-          objectFit,
-          ...style,
-        }}
-        loading={loading || (priority ? 'eager' : 'lazy')}
-        onClick={onClick}
-      />
-    );
-  }
-
-  if (fill) {
-    return (
-      <Image
-        src={resolved}
-        alt={alt}
-        fill
-        priority={priority}
-        sizes={sizes}
-        className={className}
-        style={{
-          objectFit,
-          transition: 'opacity 0.25s ease-in-out',
-          opacity: loaded ? 1 : 0.8,
-          ...style,
-        }}
-        onLoad={() => setLoaded(true)}
-        onClick={onClick}
-      />
-    );
-  }
-
+  const resolved = resolveImageUrl(typeof src === "string" ? src.trim() : "");
+  const fallback = resolveImageUrl(fallbackSrc);
+  const [failure, setFailure] = useState<{
+    source: string;
+    stage: "direct" | "fallback";
+  } | null>(null);
+  const stage = failure?.source === resolved ? failure.stage : null;
+  const displaySource = stage === "fallback" ? fallback : resolved;
+  const remote = /^https?:/.test(resolved);
+  // Retain the image cache, retry a failed optimizer directly, then use the local cake.
+  const direct = /^(data:|blob:)/.test(displaySource) || stage === "direct";
   return (
     <Image
-      src={resolved}
+      key={`${displaySource}-${stage || "optimized"}`}
+      src={displaySource}
       alt={alt}
-      width={width || 400}
-      height={height || 400}
+      fill={fill}
+      width={fill ? undefined : width}
+      height={fill ? undefined : height}
       priority={priority}
+      loading={priority ? undefined : loading}
       sizes={sizes}
+      unoptimized={direct}
       className={className}
-      style={{
-        objectFit,
-        transition: 'opacity 0.25s ease-in-out',
-        opacity: loaded ? 1 : 0.8,
-        ...style,
+      style={{ objectFit, ...style }}
+      onError={() => {
+        if (displaySource !== fallback)
+          setFailure({
+            source: resolved,
+            stage: remote && stage !== "direct" ? "direct" : "fallback",
+          });
       }}
-      onLoad={() => setLoaded(true)}
       onClick={onClick}
     />
   );

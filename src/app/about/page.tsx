@@ -1,54 +1,65 @@
-import { ChefHat, Heart, Sparkles } from 'lucide-react';
-
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import OptimizedImage from "@/components/OptimizedImage";
 export default function AboutPage() {
   return (
-    <div className="page active polka-bg-light" id="aboutPage">
-      <section className="about" style={{ position: 'relative', padding: '120px 24px' }}>
-        <div className="wavy-border-top" style={{ position: 'absolute', top: 0, left: 0, right: 0 }}></div>
-        <div className="section-container" style={{ position: 'relative', zIndex: 2 }}>
-          <div className="section-header" style={{ marginBottom: '56px' }}>
-            <span className="section-label">Meet the Baker</span>
-            <h1 className="section-title" style={{ fontSize: '3.25rem' }}>
-              The Heart Behind The Cookie Concept
-            </h1>
-            <p className="section-subtitle" style={{ maxWidth: '700px' }}>
-              Every batch is handcrafted by our founder, a passionate baker who turns simple ingredients into warm, memorable treats.
-            </p>
-          </div>
-
-          <div className="about-grid">
-            <article className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF' }}>
-              <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}>
-                <ChefHat size={28} color="var(--brown)" strokeWidth={2} />
-              </div>
-              <h3 style={{ fontSize: '1.4rem', color: '#FFFFFF' }}>From Family Kitchen to Local Favorite</h3>
-              <p style={{ color: 'var(--pink-light)' }}>
-                What started as weekend baking for friends and family grew into a cookie studio focused on quality, comfort, and creativity in every box.
-              </p>
-            </article>
-
-            <article className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF', transform: 'translateY(12px)' }}>
-              <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}>
-                <Heart size={28} color="var(--brown)" strokeWidth={2.2} />
-              </div>
-              <h3 style={{ fontSize: '1.4rem', color: '#FFFFFF' }}>Baked with Intention</h3>
-              <p style={{ color: 'var(--pink-light)' }}>
-                The baker personally tests every recipe, sources premium ingredients, and bakes in small batches to keep each cookie fresh and full of flavor.
-              </p>
-            </article>
-
-            <article className="about-card" style={{ borderRadius: '28px', border: '2px solid var(--pink)', background: 'var(--card-brown)', color: '#FFFFFF' }}>
-              <div className="about-icon" style={{ background: 'var(--pink)', color: 'var(--brown)' }}>
-                <Sparkles size={28} color="var(--brown)" strokeWidth={2} />
-              </div>
-              <h3 style={{ fontSize: '1.4rem', color: '#FFFFFF' }}>The Mission</h3>
-              <p style={{ color: 'var(--pink-light)' }}>
-                Create joyful moments through artisan cookie cakes that feel nostalgic and exciting at the same time - one concept, one bite, one smile at a time.
-              </p>
-            </article>
-          </div>
+    <div className="editorial-page section-wrap">
+      <header className="editorial-header">
+        <h1>
+          Good cookies.
+          <br />
+          <em>Better memories.</em>
+        </h1>
+        <p>
+          We’re The Cookie Concept. A small cookie studio with a big love for
+          baking, sharing, and making ordinary days a little sweeter.
+        </p>
+      </header>
+      <div className="story-full">
+        <div className="story-full-photo">
+          <OptimizedImage
+            src="/images/preview.png"
+            alt="A Kinder cookie cake ready to share"
+            fill
+            priority
+            sizes="(max-width: 700px) 100vw, 50vw"
+          />
         </div>
-      </section>
+        <div className="story-full-copy">
+          <h2>
+            From our kitchen
+            <br />
+            to your happy place.
+          </h2>
+          <p>
+            What started as weekend baking for friends and family grew into a
+            cookie studio focused on quality, comfort, and creativity in every
+            box.
+          </p>
+          <p>
+            Our founder personally tests every recipe, sources the ingredients,
+            and bakes in small batches. Because the best part of a cookie isn’t
+            just the first bite. It’s the moment you share it.
+          </p>
+          <Link href="/shop" className="button-chocolate">
+            Find your favorite{" "}
+            <span>
+              <ArrowUpRight size={20} />
+            </span>
+          </Link>
+        </div>
+      </div>
+      <div className="story-manifesto" data-reveal>
+        <p>
+          Thoughtful ingredients.
+          <br />A generous helping of chocolate.
+          <br />
+          <em>Always baked with heart.</em>
+        </p>
+        <Link href="/contact" className="text-link">
+          Say hello to the studio <ArrowUpRight size={19} />
+        </Link>
+      </div>
     </div>
   );
 }

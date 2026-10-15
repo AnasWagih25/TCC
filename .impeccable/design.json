@@ -1,0 +1,508 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T20:21:41.281238+00:00",
+  "title": "Design System: The Cookie Concept",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Chocolate Ink",
+        "canonical": "#492b22",
+        "tonalRamp": [
+          "oklch(15.00% 0.04767 37.46)",
+          "oklch(26.43% 0.04767 37.46)",
+          "oklch(37.86% 0.04767 37.46)",
+          "oklch(49.29% 0.04767 37.46)",
+          "oklch(60.71% 0.04767 37.46)",
+          "oklch(72.14% 0.04767 37.46)",
+          "oklch(83.57% 0.04767 37.46)",
+          "oklch(95.00% 0.04767 37.46)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Chocolate",
+        "canonical": "#725749",
+        "tonalRamp": [
+          "oklch(15.00% 0.04208 48.70)",
+          "oklch(26.43% 0.04208 48.70)",
+          "oklch(37.86% 0.04208 48.70)",
+          "oklch(49.29% 0.04208 48.70)",
+          "oklch(60.71% 0.04208 48.70)",
+          "oklch(72.14% 0.04208 48.70)",
+          "oklch(83.57% 0.04208 48.70)",
+          "oklch(95.00% 0.04208 48.70)"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#faf3ef",
+        "tonalRamp": [
+          "oklch(15.00% 0.01265 86.83)",
+          "oklch(26.43% 0.01265 86.83)",
+          "oklch(37.86% 0.01265 86.83)",
+          "oklch(49.29% 0.01265 86.83)",
+          "oklch(60.71% 0.01265 86.83)",
+          "oklch(72.14% 0.01265 86.83)",
+          "oklch(83.57% 0.01265 86.83)",
+          "oklch(95.00% 0.01265 86.83)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Fresh Cream",
+        "canonical": "#fffbf8",
+        "tonalRamp": [
+          "oklch(15.00% 0.00693 88.64)",
+          "oklch(26.43% 0.00693 88.64)",
+          "oklch(37.86% 0.00693 88.64)",
+          "oklch(49.29% 0.00693 88.64)",
+          "oklch(60.71% 0.00693 88.64)",
+          "oklch(72.14% 0.00693 88.64)",
+          "oklch(83.57% 0.00693 88.64)",
+          "oklch(95.00% 0.00693 88.64)"
+        ]
+      },
+      "blush": {
+        "role": "secondary",
+        "displayName": "Soft Blush",
+        "canonical": "#f2d6cf",
+        "tonalRamp": [
+          "oklch(15.00% 0.03280 34.31)",
+          "oklch(26.43% 0.03280 34.31)",
+          "oklch(37.86% 0.03280 34.31)",
+          "oklch(49.29% 0.03280 34.31)",
+          "oklch(60.71% 0.03280 34.31)",
+          "oklch(72.14% 0.03280 34.31)",
+          "oklch(83.57% 0.03280 34.31)",
+          "oklch(95.00% 0.03280 34.31)"
+        ]
+      },
+      "rose": {
+        "role": "secondary",
+        "displayName": "Baked Rose",
+        "canonical": "#a64d50",
+        "tonalRamp": [
+          "oklch(15.00% 0.11768 19.83)",
+          "oklch(26.43% 0.11768 19.83)",
+          "oklch(37.86% 0.11768 19.83)",
+          "oklch(49.29% 0.11768 19.83)",
+          "oklch(60.71% 0.11768 19.83)",
+          "oklch(72.14% 0.11768 19.83)",
+          "oklch(83.57% 0.11768 19.83)",
+          "oklch(95.00% 0.11768 19.83)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Warm Line",
+        "canonical": "#decdc3",
+        "tonalRamp": [
+          "oklch(15.00% 0.02367 75.84)",
+          "oklch(26.43% 0.02367 75.84)",
+          "oklch(37.86% 0.02367 75.84)",
+          "oklch(49.29% 0.02367 75.84)",
+          "oklch(60.71% 0.02367 75.84)",
+          "oklch(72.14% 0.02367 75.84)",
+          "oklch(83.57% 0.02367 75.84)",
+          "oklch(95.00% 0.02367 75.84)"
+        ]
+      },
+      "ink-deep": {
+        "role": "primary",
+        "displayName": "Deep Chocolate",
+        "canonical": "#332017",
+        "tonalRamp": [
+          "oklch(15.00% 0.03378 46.17)",
+          "oklch(26.43% 0.03378 46.17)",
+          "oklch(37.86% 0.03378 46.17)",
+          "oklch(49.29% 0.03378 46.17)",
+          "oklch(60.71% 0.03378 46.17)",
+          "oklch(72.14% 0.03378 46.17)",
+          "oklch(83.57% 0.03378 46.17)",
+          "oklch(95.00% 0.03378 46.17)"
+        ]
+      },
+      "commerce-hover": {
+        "role": "primary",
+        "displayName": "Warm Chocolate Hover",
+        "canonical": "#674137",
+        "tonalRamp": [
+          "oklch(15.00% 0.05599 35.44)",
+          "oklch(26.43% 0.05599 35.44)",
+          "oklch(37.86% 0.05599 35.44)",
+          "oklch(49.29% 0.05599 35.44)",
+          "oklch(60.71% 0.05599 35.44)",
+          "oklch(72.14% 0.05599 35.44)",
+          "oklch(83.57% 0.05599 35.44)",
+          "oklch(95.00% 0.05599 35.44)"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Packaging Panel",
+        "canonical": "#f0e7da",
+        "tonalRamp": [
+          "oklch(15.00% 0.01992 77.31)",
+          "oklch(26.43% 0.01992 77.31)",
+          "oklch(37.86% 0.01992 77.31)",
+          "oklch(49.29% 0.01992 77.31)",
+          "oklch(60.71% 0.01992 77.31)",
+          "oklch(72.14% 0.01992 77.31)",
+          "oklch(83.57% 0.01992 77.31)",
+          "oklch(95.00% 0.01992 77.31)"
+        ]
+      },
+      "review-surface": {
+        "role": "neutral",
+        "displayName": "Review Paper",
+        "canonical": "#f1e6df",
+        "tonalRamp": [
+          "oklch(15.00% 0.01821 78.24)",
+          "oklch(26.43% 0.01821 78.24)",
+          "oklch(37.86% 0.01821 78.24)",
+          "oklch(49.29% 0.01821 78.24)",
+          "oklch(60.71% 0.01821 78.24)",
+          "oklch(72.14% 0.01821 78.24)",
+          "oklch(83.57% 0.01821 78.24)",
+          "oklch(95.00% 0.01821 78.24)"
+        ]
+      },
+      "photo-ground": {
+        "role": "neutral",
+        "displayName": "Biscuit Ground",
+        "canonical": "#f0e4d6",
+        "tonalRamp": [
+          "oklch(15.00% 0.02286 71.78)",
+          "oklch(26.43% 0.02286 71.78)",
+          "oklch(37.86% 0.02286 71.78)",
+          "oklch(49.29% 0.02286 71.78)",
+          "oklch(60.71% 0.02286 71.78)",
+          "oklch(72.14% 0.02286 71.78)",
+          "oklch(83.57% 0.02286 71.78)",
+          "oklch(95.00% 0.02286 71.78)"
+        ]
+      },
+      "rating": {
+        "role": "tertiary",
+        "displayName": "Toasted Star",
+        "canonical": "#995e35",
+        "tonalRamp": [
+          "oklch(15.00% 0.09533 53.99)",
+          "oklch(26.43% 0.09533 53.99)",
+          "oklch(37.86% 0.09533 53.99)",
+          "oklch(49.29% 0.09533 53.99)",
+          "oklch(60.71% 0.09533 53.99)",
+          "oklch(72.14% 0.09533 53.99)",
+          "oklch(83.57% 0.09533 53.99)",
+          "oklch(95.00% 0.09533 53.99)"
+        ]
+      },
+      "error": {
+        "role": "tertiary",
+        "displayName": "Error Ink",
+        "canonical": "#94332d",
+        "tonalRamp": [
+          "oklch(15.00% 0.13190 27.03)",
+          "oklch(26.43% 0.13190 27.03)",
+          "oklch(37.86% 0.13190 27.03)",
+          "oklch(49.29% 0.13190 27.03)",
+          "oklch(60.71% 0.13190 27.03)",
+          "oklch(72.14% 0.13190 27.03)",
+          "oklch(83.57% 0.13190 27.03)",
+          "oklch(95.00% 0.13190 27.03)"
+        ]
+      },
+      "error-surface": {
+        "role": "tertiary",
+        "displayName": "Error Paper",
+        "canonical": "#f6e0d9",
+        "tonalRamp": [
+          "oklch(15.00% 0.02613 38.46)",
+          "oklch(26.43% 0.02613 38.46)",
+          "oklch(37.86% 0.02613 38.46)",
+          "oklch(49.29% 0.02613 38.46)",
+          "oklch(60.71% 0.02613 38.46)",
+          "oklch(72.14% 0.02613 38.46)",
+          "oklch(83.57% 0.02613 38.46)",
+          "oklch(95.00% 0.02613 38.46)"
+        ]
+      },
+      "disabled": {
+        "role": "neutral",
+        "displayName": "Disabled Paper",
+        "canonical": "#e0d7cc",
+        "tonalRamp": [
+          "oklch(15.00% 0.01791 73.06)",
+          "oklch(26.43% 0.01791 73.06)",
+          "oklch(37.86% 0.01791 73.06)",
+          "oklch(49.29% 0.01791 73.06)",
+          "oklch(60.71% 0.01791 73.06)",
+          "oklch(72.14% 0.01791 73.06)",
+          "oklch(83.57% 0.01791 73.06)",
+          "oklch(95.00% 0.01791 73.06)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Storefront Display",
+        "purpose": "Short hero headlines; responsive phone override is documented in DESIGN.md."
+      },
+      "headline": {
+        "displayName": "Editorial Headline",
+        "purpose": "Shared section headings in Ahsing."
+      },
+      "title": {
+        "displayName": "Product Title",
+        "purpose": "Outfit product names; review titles use a related role."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base reading and interface text."
+      },
+      "label": {
+        "displayName": "Field Label",
+        "purpose": "Explicit form labels and compact interface hierarchy."
+      }
+    },
+    "shadows": [
+      {
+        "name": "mobile-menu",
+        "value": "0 22px 25px #492b2210",
+        "purpose": "Separate the expanded mobile menu from page content."
+      },
+      {
+        "name": "cookie-seal",
+        "value": "0 7px 20px #492b2212",
+        "purpose": "Small lift over the hero photograph."
+      },
+      {
+        "name": "modal",
+        "value": "0 25px 80px #2e1b1540",
+        "purpose": "Product and box dialogs."
+      },
+      {
+        "name": "toast",
+        "value": "0 10px 28px #492b2230",
+        "purpose": "Transient feedback above the page."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Shared control, reveal, photo and menu easing."
+      },
+      {
+        "name": "control-duration",
+        "value": "240ms",
+        "purpose": "Background, color and transform control feedback."
+      },
+      {
+        "name": "press-scale",
+        "value": "scale(0.98)",
+        "purpose": "Button active feedback."
+      },
+      {
+        "name": "section-reveal",
+        "value": "650ms; opacity 0.65 to 1; translateY(20px) to 0",
+        "purpose": "One-time IntersectionObserver/WAAPI reveal with visible defaults and threshold 0.12."
+      },
+      {
+        "name": "photo-arrival",
+        "value": "900ms; opacity 0.7 to 1; translateY(24px) rotate(2deg) to none",
+        "purpose": "Hero image arrival."
+      },
+      {
+        "name": "featured-image",
+        "value": "650ms; scale(1.045)",
+        "purpose": "Featured product image hover."
+      },
+      {
+        "name": "mobile-menu-open",
+        "value": "300ms; opacity 0.6 to 1; translateY(-8px) to 0",
+        "purpose": "Mobile menu entrance."
+      },
+      {
+        "name": "modal-visibility",
+        "value": "220ms; opacity, visibility",
+        "purpose": "Product/box backdrop visibility."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce",
+        "purpose": "Disable CSS animations/transitions and smooth scrolling; skip section-reveal setup."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "tablet-max",
+        "value": "1050px"
+      },
+      {
+        "name": "phone-max",
+        "value": "760px"
+      },
+      {
+        "name": "wide-min",
+        "value": "1600px"
+      }
+    ],
+    "tasteRefinement": {
+      "source": "src/app/taste.css",
+      "skills": [
+        "design-taste-frontend-v2-experimental",
+        "gpt-taste",
+        "redesign-existing-projects",
+        "high-end-visual-design"
+      ],
+      "hero": "Centered two-line heading, uncropped contain image stage, catalog cake selector",
+      "layout": "Pinned title with 2-column dense gallery; 1 full-width product plus 2 half-width products",
+      "motion": [
+        "GSAP hero entrance",
+        "desktop title pin",
+        "story image scale"
+      ],
+      "appearance": {
+        "default": "system",
+        "options": [
+          "system",
+          "light",
+          "dark"
+        ],
+        "light": {
+          "paper": "#faf3ef",
+          "surface": "#fffbf8",
+          "line": "#decdc3",
+          "stage": "#eedad0"
+        },
+        "dark": {
+          "paper": "#251c19",
+          "surface": "#30231f",
+          "ink": "#f6e8dd",
+          "muted": "#ceb5a8",
+          "rose": "#e8a79d"
+        }
+      },
+      "imageFallback": "optimized -> direct URL -> supplied local cake; inline and blob fill support",
+      "legacyPreviews": "Previews outside the taste refinement describe retained commerce controls."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Storefront action with an inset arrow well.",
+      "html": "<button class=\"ds-primary\" type=\"button\">Find your favorite<span><svg aria-hidden=\"true\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></span></button>",
+      "css": ".ds-primary{display:inline-flex;align-items:center;justify-content:center;gap:24px;min-height:50px;padding:10px 11px 10px 24px;border:1px solid transparent;border-radius:50px;font-size:13px;font-weight:500;line-height:1.4;font-family:var(--font-body, Outfit, sans-serif);transition:background 240ms cubic-bezier(0.16, 1, 0.3, 1),color 240ms cubic-bezier(0.16, 1, 0.3, 1),transform 240ms cubic-bezier(0.16, 1, 0.3, 1);cursor:pointer;background:var(--ink, #492b22);color:var(--paper, #faf6ed)}.ds-primary>span{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#ffffff17;transition:transform 240ms cubic-bezier(0.16, 1, 0.3, 1)}.ds-primary:hover{background:var(--brown-dark, #332017)}.ds-primary:hover>span{transform:rotate(9deg)}.ds-primary:focus-visible{outline:2px solid var(--rose, #a64d50);outline-offset:5px}.ds-primary:active{transform:scale(.98)}.ds-primary:disabled{opacity:.5;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-primary,.ds-primary>span{transition:none;animation:none}}"
+    },
+    {
+      "name": "Secondary action",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined commerce action with blush hover.",
+      "html": "<button class=\"ds-secondary\" type=\"button\">Continue browsing</button>",
+      "css": ".ds-secondary{display:inline-flex;align-items:center;justify-content:center;gap:24px;min-height:50px;padding:10px 11px 10px 24px;border:1px solid transparent;border-radius:50px;font-size:13px;font-weight:500;line-height:1.4;font-family:var(--font-body, Outfit, sans-serif);transition:background 240ms cubic-bezier(0.16, 1, 0.3, 1),color 240ms cubic-bezier(0.16, 1, 0.3, 1),transform 240ms cubic-bezier(0.16, 1, 0.3, 1);cursor:pointer;background:transparent;color:var(--ink, #492b22);border-color:var(--line, #dfd4c5)}.ds-secondary:hover{background:var(--blush, #f2d6cf);border-color:var(--blush, #f2d6cf)}.ds-secondary:focus-visible{outline:2px solid var(--rose, #a64d50);outline-offset:5px}.ds-secondary:active{transform:scale(.98)}.ds-secondary:disabled{background:#e0d7cc;color:var(--muted, #725749);border-color:transparent;opacity:.5;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-secondary{transition:none;animation:none}}"
+    },
+    {
+      "name": "Text action",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "Underlined supporting action with diagonal arrow feedback.",
+      "html": "<a class=\"ds-text\" href=\"/about\">Our story <svg aria-hidden=\"true\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></a>",
+      "css": ".ds-text{display:inline-flex;align-items:center;gap:12px;padding:8px 0;font-family:var(--font-body, Outfit, sans-serif);font-size:13px;font-weight:500;line-height:1.6;color:var(--ink, #492b22);text-decoration:none;border-bottom:1px solid currentColor}.ds-text svg{transition:transform 240ms cubic-bezier(0.16, 1, 0.3, 1)}.ds-text:hover svg{transform:translate(2px,-2px)}.ds-text:focus-visible{outline:2px solid var(--rose, #a64d50);outline-offset:5px}@media(prefers-reduced-motion:reduce){.ds-text svg{transition:none;animation:none}}"
+    },
+    {
+      "name": "Icon control",
+      "kind": "button",
+      "refersTo": "button-icon",
+      "description": "Circular close/menu control with an accessible target.",
+      "html": "<button class=\"ds-icon\" type=\"button\" aria-label=\"Close\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" aria-hidden=\"true\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"m6 6 12 12M6 18 18 6\"/></svg></button>",
+      "css": ".ds-icon{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:0;border-radius:50%;background:transparent;color:var(--ink, #492b22);cursor:pointer;transition:background 240ms cubic-bezier(0.16, 1, 0.3, 1),color 240ms cubic-bezier(0.16, 1, 0.3, 1),transform 240ms cubic-bezier(0.16, 1, 0.3, 1)}.ds-icon:focus-visible{outline:2px solid var(--rose, #a64d50);outline-offset:5px}.ds-icon:active{transform:scale(.98)}.ds-icon:disabled{opacity:.5;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-icon{transition:none;animation:none}}"
+    },
+    {
+      "name": "Labeled field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Ordinary labeled input with warm stroke and rose keyboard feedback.",
+      "html": "<label class=\"ds-label\">Your name<input class=\"ds-field\" autocomplete=\"name\" placeholder=\"How should we credit you?\"></label>",
+      "css": ".ds-label{display:block;font-family:var(--font-body, Outfit, sans-serif);font-size:13px;font-weight:500;line-height:1.6;color:var(--ink, #492b22)}.ds-field{display:block;box-sizing:border-box;width:100%;min-height:48px;margin-top:8px;border:1px solid var(--line, #dfd4c5);border-radius:8px;background:var(--surface, #fffdf8);padding:12px 14px;color:var(--ink, #492b22);font-family:var(--font-body, Outfit, sans-serif);font-size:16px;font-weight:400;caret-color:var(--rose, #a64d50)}.ds-field::placeholder{color:var(--muted, #725749);opacity:1}.ds-field:focus{border-color:var(--rose, #a64d50)}.ds-field:focus-visible{outline:2px solid var(--rose, #a64d50);outline-offset:5px}"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Desktop links underline on hover and at the current destination; phones use the separate menu panel.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main navigation\"><a href=\"/shop\" aria-current=\"page\">The menu</a><a href=\"/about\">Our story</a><a href=\"/reviews\">Your cookie stories</a><a href=\"/contact\">Say hello</a></nav>",
+      "css": ".ds-nav{display:flex;align-items:center;gap:30px;padding:16px;background:var(--paper, #faf6ed);color:var(--ink, #492b22);font-family:var(--font-body, Outfit, sans-serif);font-size:13px;flex-wrap:wrap}.ds-nav a{position:relative;padding:8px 0;color:inherit;text-decoration:none}.ds-nav a::after{content:\"\";position:absolute;left:0;right:0;bottom:4px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform 240ms cubic-bezier(0.16, 1, 0.3, 1)}.ds-nav a:hover::after,.ds-nav a[aria-current]::after{transform:scaleX(1)}.ds-nav a:focus-visible{outline:2px solid var(--rose, #a64d50);outline-offset:5px}@media(prefers-reduced-motion:reduce){.ds-nav a::after{transition:none;animation:none}}"
+    },
+    {
+      "name": "Filter chip",
+      "kind": "chip",
+      "refersTo": "filter-chip",
+      "description": "Outlined menu/review filter; aria-pressed captures selection.",
+      "html": "<button class=\"ds-chip\" type=\"button\" aria-pressed=\"false\">With photos</button><button class=\"ds-chip\" type=\"button\" aria-pressed=\"true\">Everything</button>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:9px 17px;border:1px solid var(--line, #dfd4c5);border-radius:50px;background:transparent;color:var(--ink, #492b22);font-family:var(--font-body, Outfit, sans-serif);font-size:12px;cursor:pointer;transition:background 240ms cubic-bezier(0.16, 1, 0.3, 1),color 240ms cubic-bezier(0.16, 1, 0.3, 1),transform 240ms cubic-bezier(0.16, 1, 0.3, 1)}.ds-chip[aria-pressed=\"true\"]{background:var(--ink, #492b22);border-color:var(--ink, #492b22);color:var(--paper, #faf6ed)}.ds-chip:focus-visible{outline:2px solid var(--rose, #a64d50);outline-offset:5px}.ds-chip:active{transform:scale(.98)}@media(prefers-reduced-motion:reduce){.ds-chip{transition:none;animation:none}}"
+    },
+    {
+      "name": "Review card",
+      "kind": "card",
+      "refersTo": "review-card",
+      "description": "Tonal container for a stored customer review; preview labels are placeholders.",
+      "html": "<article class=\"ds-review\" aria-label=\"Review layout preview\"><h3>Review title</h3><p>Customer-written review appears here after moderation.</p><div class=\"ds-review-author\">Customer name</div></article>",
+      "css": ".ds-review{padding:25px;background:#f1e9dd;color:var(--ink, #492b22);border-radius:12px;overflow:hidden;font-family:var(--font-body, Outfit, sans-serif);line-height:1.6}.ds-review h3{margin:0 0 12px;font-size:21px;font-weight:500;line-height:1.3;letter-spacing:-.02em;overflow-wrap:anywhere}.ds-review>p{margin:0;font-size:14px;line-height:1.85;color:var(--muted, #725749);white-space:pre-line;overflow-wrap:anywhere}.ds-review-author{margin-top:24px;font-size:12px;font-weight:500;overflow-wrap:anywhere}@media(max-width:760px){.ds-review{padding:23px}}"
+    },
+    {
+      "name": "Cookie seal",
+      "kind": "custom",
+      "refersTo": "cookie-seal",
+      "description": "Hero promotion trigger; the live site reveals its existing promotion inline.",
+      "html": "<button class=\"ds-seal\" type=\"button\" aria-label=\"Reveal a little cookie secret\"><span>love at<br>first bite.</span><svg aria-hidden=\"true\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></button>",
+      "css": ".ds-seal{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:116px;height:116px;border:0;border-radius:50%;background:var(--blush, #f2d6cf);color:var(--ink, #492b22);box-shadow:0 7px 20px #492b2212;transform:rotate(12deg);cursor:pointer;transition:background 240ms cubic-bezier(0.16, 1, 0.3, 1),color 240ms cubic-bezier(0.16, 1, 0.3, 1),transform 240ms cubic-bezier(0.16, 1, 0.3, 1)}.ds-seal>span{font-family:var(--font-display, Ahsing, Georgia, serif);font-size:20px;font-weight:400;line-height:1.05}.ds-seal:hover{transform:rotate(0)}.ds-seal:focus-visible{outline:2px solid var(--rose, #a64d50);outline-offset:5px}.ds-seal:active{transform:scale(.98)}@media(max-width:1050px){.ds-seal{width:93px;height:93px}.ds-seal>span{font-size:17px}}@media(max-width:760px){.ds-seal{width:88px;height:88px;gap:2px}}@media(prefers-reduced-motion:reduce){.ds-seal{transition:none;animation:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Confectionery shop window",
+    "overview": "Warm paper, chocolate lettering and real bakery photography create a generous, inviting shop window. The supplied Ahsing display face supplies the personality; Outfit makes browsing, ordering and staff work clear. Blush and rose introduce restrained confectionery color without competing with the food.\n\nExpressive headings and product imagery carry the storefront. The same palette becomes quieter in forms, checkout and administration: labeled controls, explicit selection, tonal panels and direct feedback. This direction was established under the user's delegated visual judgment; it is the implemented visual system, not a separate proposed identity.",
+    "keyCharacteristics": [
+      "Expressive Ahsing headings with calm Outfit interface text.",
+      "Warm continuous paper, chocolate ink and restrained blush and rose accents.",
+      "Real product photography, generous section rhythm and compact rounded surfaces.",
+      "Clear ordering controls, visible keyboard focus and brief, optional motion."
+    ],
+    "rules": [
+      {
+        "name": "The Paper Ground Rule",
+        "body": "Keep the page ground continuous; use tonal panels or warm boundaries where a task needs grouping.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Voices Rule",
+        "body": "Reserve Ahsing for display headings and wordmarks; use Outfit for controls and information that must scan quickly.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Content Rule",
+        "body": "Keep product and ordinary content surfaces flat; reserve prominent elevation for overlays and transient feedback.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use actual catalog photography, prices and stored customer submissions.",
+      "**Do** preserve the warm paper ground, the final muted text token and the Ahsing/Outfit role split.",
+      "**Do** keep ordering choices explicit, labeled and visibly selected.",
+      "**Do** preserve keyboard focus, browser zoom, reduced motion and complete loading, empty, failure and retry states.",
+      "**Do** verify review deployment permissions and cloud behavior using `REVIEWS_SETUP.md` before production launch."
+    ],
+    "donts": [
+      "**Don't** invent ratings, endorsements, sales counts or verified-purchase claims.",
+      "**Don't** restore decorative polka dots, repeated waves or blocking loading intros from the superseded visual treatment.",
+      "**Don't** put Ahsing on dense controls or add shadows to ordinary product cards.",
+      "**Don't** hide content until an animation runs or add continuous decorative rotation.",
+      "**Don't** treat a local UI check as proof that cloud review submission or staff publishing is deployed."
+    ]
+  }
+}

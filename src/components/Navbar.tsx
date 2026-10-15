@@ -1,115 +1,109 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useCart } from '@/context/CartContext';
-import Image from 'next/image';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { ArrowUpRight, ShoppingBag } from "lucide-react";
+import ThemeSwitch from "./ThemeSwitch";
+import { useCart } from "@/context/CartContext";
+
+const links = [
+  { href: "/shop", label: "The menu" },
+  { href: "/about", label: "Our story" },
+  { href: "/reviews", label: "Your cookie stories" },
+  { href: "/contact", label: "Say hello" },
+];
 
 export default function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { cart } = useCart();
-
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
+  const count = cart.reduce((sum, item) => sum + item.quantity, 0);
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+    if (!open) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
     };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [pathname]);
-
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [open]);
   return (
-    <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`} id="navbar">
-      <div className="nav-container">
-
-        <div className="nav-left">
-          <ul className="nav-links" id="navLinksLeft">
-            <li>
-              <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
-                Home
-              </Link>
-            </li>
-            <li>
-              <Link href="/shop" className={`nav-link ${pathname === '/shop' ? 'active' : ''}`}>
-                Shop
-              </Link>
-            </li>
-          </ul>
-        </div>
-
-        <Link href="/" className="nav-logo">
-          <div style={{ width: '180px', height: '54px', position: 'relative' }}>
-            <Image 
-              src="/images/logo-new.png" 
-              alt="The Cookie Concept Logo" 
-              fill 
-              style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)' }} 
-              unoptimized={true} 
-            />
-          </div>
+    <>
+      <div className="announcement">
+        <span>A little cookie joy, made in Cairo.</span>
+        <Link href="/shop">
+          Find your favorite <ArrowUpRight size={13} />
         </Link>
-
-        {/* Mobile Menu Toggle */}
-        <button
-          className="menu-toggle"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          aria-label="Toggle menu"
-          style={{ position: 'absolute', right: '24px' }}
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-
-        <div className="nav-right">
-          <ul className="nav-links" id="navLinksRight">
-            <li>
-              <Link href="/about" className={`nav-link ${pathname === '/about' ? 'active' : ''}`}>
-                About
-              </Link>
-            </li>
-            <li>
-              <Link href="/cart" className={`nav-link cart-link ${pathname === '/cart' ? 'active' : ''}`}>
-                Cart
-                {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
-              </Link>
-            </li>
-          </ul>
-        </div>
       </div>
-
-      <ul className={`mobile-nav-links ${isMenuOpen ? 'open' : ''}`} id="navLinksMobile">
-        <li>
-          <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`}>
-            Home
+      <header className="site-header">
+        <Link
+          href="/"
+          className="brand-mark"
+          aria-label="The Cookie Concept home"
+          onClick={() => setOpen(false)}
+        >
+          <span>the</span>
+          <strong>cookie concept.</strong>
+        </Link>
+        <nav className="desktop-nav" aria-label="Main navigation">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={pathname === link.href ? "page" : undefined}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+        <div className="header-actions">
+          <ThemeSwitch />
+          <Link
+            href="/cart"
+            className="bag-link"
+            aria-label={`Your bag, ${count} items`}
+            onClick={() => setOpen(false)}
+          >
+            <ShoppingBag size={20} strokeWidth={1.5} />
+            <span className="bag-label">Your bag</span>
+            <span className="bag-count">{count}</span>
           </Link>
-        </li>
-        <li>
-          <Link href="/shop" className={`nav-link ${pathname === '/shop' ? 'active' : ''}`}>
-            Shop
-          </Link>
-        </li>
-        <li>
-          <Link href="/about" className={`nav-link ${pathname === '/about' ? 'active' : ''}`}>
-            About
-          </Link>
-        </li>
-        <li>
-          <Link href="/cart" className={`nav-link cart-link ${pathname === '/cart' ? 'active' : ''}`}>
-            Cart
-            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
-          </Link>
-        </li>
-      </ul>
-    </nav>
+          <button
+            className="mobile-menu-button icon-button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            aria-label={open ? "Close menu" : "Open menu"}
+          >
+            <span
+              className={`menu-lines ${open ? "is-open" : ""}`}
+              aria-hidden="true"
+            >
+              <span />
+              <span />
+            </span>
+          </button>
+        </div>
+        {open && (
+          <nav
+            id="mobile-menu"
+            className="mobile-menu"
+            aria-label="Mobile navigation"
+          >
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={pathname === link.href ? "page" : undefined}
+                onClick={() => setOpen(false)}
+              >
+                {link.label}
+                <ArrowUpRight size={22} />
+              </Link>
+            ))}
+          </nav>
+        )}
+      </header>
+    </>
   );
 }

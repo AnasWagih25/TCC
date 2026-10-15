@@ -56,6 +56,7 @@ export default function ProductImageSlider({ images, alt }: ProductImageSliderPr
       {validImages.length > 1 && (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 10px', zIndex: 10, pointerEvents: 'none' }}>
           <button 
+            aria-label="Previous product photo"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -80,7 +81,7 @@ export default function ProductImageSlider({ images, alt }: ProductImageSliderPr
           >
             <ChevronLeft size={20} />
           </button>
-          <button 
+          <button aria-label="Next product photo"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

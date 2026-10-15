@@ -1,72 +1,66 @@
-'use client';
-
-import React, { Suspense } from 'react';
-import Link from 'next/link';
-import { PartyPopper } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
-
+"use client";
+import { Suspense } from "react";
+import Link from "next/link";
+import { CheckCircle2, ArrowUpRight } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useCart } from "@/context/CartContext";
 function SuccessContent() {
-  const searchParams = useSearchParams();
-  const orderId = searchParams.get('orderId') || 'ORD-';
-
+  const params = useSearchParams();
+  const { orders, pickupSettings } = useCart();
+  const id = params.get("orderId");
+  const order = orders.find((item) => item.id === id);
   return (
-    <div className="section-container" style={{
-      maxWidth: '600px',
-      margin: '0 auto',
-      background: 'var(--card-brown)',
-      padding: '48px 32px',
-      borderRadius: '24px',
-      border: '2px solid var(--pink)',
-      boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)',
-      textAlign: 'center',
-      color: '#FFFFFF'
-    }}>
-      <div style={{
-        width: '80px',
-        height: '80px',
-        borderRadius: '50%',
-        background: 'var(--pink)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        margin: '0 auto 20px',
-        color: 'var(--brown)',
-        boxShadow: '0 8px 20px rgba(243, 195, 206, 0.3)'
-      }}>
-        <PartyPopper size={44} color="var(--brown)" strokeWidth={2} />
-      </div>
-      <h2 style={{ fontSize: '2.2rem', marginBottom: '12px', color: '#FFFFFF', fontWeight: 700 }}>Order Received! 🍪</h2>
-      <p style={{ fontSize: '1.1rem', color: '#FFFFFF', marginBottom: '24px', lineHeight: 1.6 }}>
-        Thank you for choosing The Cookie Concept.<br />
-        Your order <strong style={{ color: 'var(--pink)', textDecoration: 'underline' }}>#{orderId}</strong> has been successfully placed.
+    <div className="success-card">
+      <CheckCircle2 size={48} strokeWidth={1.1} />
+      <h1>
+        {id ? "A little joy is on its way." : "Your next cookie moment awaits."}
+      </h1>
+      <p>
+        {id ? (
+          <>
+            Thanks for choosing The Cookie Concept.
+            <br />
+            We’ve received order <strong>#{id}</strong>.
+          </>
+        ) : (
+          "Browse the menu to start a new cookie story."
+        )}
       </p>
-      <div style={{
-        background: 'rgba(0, 0, 0, 0.25)',
-        border: '1.5px solid var(--pink)',
-        borderRadius: '14px',
-        padding: '16px 20px',
-        marginBottom: '28px',
-        fontSize: '0.92rem',
-        color: 'var(--pink-light)',
-        lineHeight: 1.5,
-        textAlign: 'center'
-      }}>
-        <strong style={{ color: '#FFFFFF', display: 'block', marginBottom: '6px' }}>ℹ️ Order Confirmation</strong>
-        For delivery orders, our team will contact you to confirm the delivery fee (70–100 EGP) and timing. For pickup orders, your order will be ready at our branch next day from 12 PM to 8 PM.
+      {id && (
+        <div className="success-detail">
+          <strong>What happens next?</strong>
+          {order?.deliveryMethod === "pickup" ? (
+            <>
+              Your pickup location is {pickupSettings.address}.<br />
+              {pickupSettings.hoursNotice}.
+            </>
+          ) : (
+            "Our team will contact you to confirm your delivery details and timing."
+          )}
+          <br />
+          Payment is available by cash, Instapay or Telda.
+        </div>
+      )}
+      <div className="success-links">
+        <Link href="/shop" className="button-chocolate">
+          Back to the menu{" "}
+          <span>
+            <ArrowUpRight size={19} />
+          </span>
+        </Link>
+        <Link href="/reviews" className="text-link">
+          Share a review after your first bite <ArrowUpRight size={16} />
+        </Link>
       </div>
-      <Link href="/shop" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: '1rem', fontWeight: 700 }}>
-        Order More Cookies
-      </Link>
     </div>
   );
 }
-
 export default function SuccessPage() {
   return (
-    <div className="page active polka-bg" style={{ minHeight: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: '100px', paddingBottom: '60px' }}>
-      <Suspense fallback={<div style={{ color: '#FFFFFF' }}>Loading...</div>}>
+    <section className="section-wrap">
+      <Suspense fallback={<p role="status">Finding your cookie moment…</p>}>
         <SuccessContent />
       </Suspense>
-    </div>
+    </section>
   );
 }

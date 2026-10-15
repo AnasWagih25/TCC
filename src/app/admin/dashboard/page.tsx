@@ -10,6 +10,7 @@ import { storage, db } from '@/lib/firebase';
 import { useCart, Product, Order, Flavor, resolveImageUrl, Category, parseGoogleMapsUrl } from '@/context/CartContext';
 import { Cookie, TrendingUp, Package, Image as ImageIcon, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import OptimizedImage from '@/components/OptimizedImage';
+import ReviewAdmin from '@/components/ReviewAdmin';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '@/lib/cropImage';
 
@@ -76,7 +77,7 @@ export default function AdminDashboard() {
     return orderId;
   };
 
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'settings'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'reviews' | 'settings'>('orders');
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState('');
   const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
@@ -477,7 +478,7 @@ export default function AdminDashboard() {
                         setNewName(user.displayName || '');
                         setIsEditingName(true);
                       }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pink)', textDecoration: 'underline', fontSize: '0.8rem', padding: 0 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink)', textDecoration: 'underline', fontSize: '0.8rem', padding: 0 }}
                       title="Edit Name"
                     >
                       Edit
@@ -505,6 +506,7 @@ export default function AdminDashboard() {
             >
               Products
             </button>
+            <button className={`admin-tab ${activeTab === 'reviews' ? 'active' : ''}`} onClick={() => setActiveTab('reviews')}>Reviews</button>
             <button 
               className={`admin-tab ${activeTab === 'settings' ? 'active' : ''}`} 
               onClick={() => setActiveTab('settings')}
@@ -519,7 +521,7 @@ export default function AdminDashboard() {
 
         {/* Content */}
         <div className="admin-content">
-          {activeTab === 'orders' ? (
+          {activeTab === 'reviews' ? <ReviewAdmin /> : activeTab === 'orders' ? (
             <div className="admin-panel active">
               <div className="stats-grid">
                 <div className="stat-card">
@@ -584,8 +586,8 @@ export default function AdminDashboard() {
                             )}
                             <span style={{ 
                               marginLeft: '8px', fontSize: '0.72rem', 
-                              background: o.deliveryMethod === 'pickup' ? '#2ecc71' : 'var(--pink)', 
-                              color: o.deliveryMethod === 'pickup' ? '#ffffff' : 'var(--brown)', 
+                              background: o.deliveryMethod === 'pickup' ? '#347049' : 'var(--pink)',
+                              color: o.deliveryMethod === 'pickup' ? 'var(--ink)' : 'var(--brown)',
                               padding: '3px 8px', borderRadius: '999px', 
                               fontFamily: '"Inter", sans-serif', fontWeight: 600 
                             }}>
@@ -654,7 +656,7 @@ export default function AdminDashboard() {
                             <span>{o.deliveryMethod === 'pickup' ? 'FREE (Pickup)' : `EGP ${(o.deliveryFee !== undefined && o.deliveryFee !== null ? o.deliveryFee : 70).toFixed(2)}`}</span>
                           </div>
                           {o.discount && o.discount > 0 ? (
-                            <div className="order-product-row" style={{ marginTop: '5px', color: '#2ecc71', fontWeight: 600 }}>
+                            <div className="order-product-row" style={{ marginTop: '5px', color: '#347049', fontWeight: 600 }}>
                               <span>Discount</span>
                               <span>- EGP {o.discount.toFixed(2)}</span>
                             </div>
@@ -731,7 +733,7 @@ export default function AdminDashboard() {
                           className="stock" 
                           style={{
                              display: 'inline-block', padding: '2px 6px', borderRadius: '4px', marginTop: '4px',
-                             ...(p.stock <= 5 ? { background: 'rgba(231,76,60,0.1)', color: '#e74c3c' } : { color: 'var(--brown-light)' })
+                             ...(p.stock <= 5 ? { background: 'rgba(231,76,60,0.1)', color: '#a33832' } : { color: 'var(--brown-light)' })
                           }}
                         >
                           Stock: {p.stock}
@@ -756,8 +758,8 @@ export default function AdminDashboard() {
 
               {/* Homepage Hero Image Configuration Card */}
               <div className="admin-settings-section" style={{ marginBottom: '24px' }}>
-                <h4 style={{ marginBottom: '16px', color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <ImageIcon size={22} color="var(--pink)" /> Homepage Hero Image
+                <h4 style={{ marginBottom: '16px', color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <ImageIcon size={22} color="var(--ink)" /> Homepage Hero Image
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <p style={{ fontSize: '0.9rem', color: 'var(--pink-light)', margin: 0, lineHeight: 1.5 }}>
@@ -768,7 +770,7 @@ export default function AdminDashboard() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '20px',
-                    background: 'rgba(0,0,0,0.25)',
+                    background: 'var(--off-white)',
                     padding: '20px',
                     borderRadius: '16px',
                     border: '1.5px solid rgba(243,195,206,0.3)',
@@ -780,7 +782,7 @@ export default function AdminDashboard() {
                       height: '120px',
                       borderRadius: '16px',
                       border: '2.5px solid var(--pink)',
-                      boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                      boxShadow: 'none',
                       flexShrink: 0,
                       overflow: 'hidden'
                     }}>
@@ -792,7 +794,7 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <div style={{ flex: 1, minWidth: '240px' }}>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#FFFFFF', marginBottom: '6px' }}>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
                         Current Active Hero Image
                       </div>
                       <label 
@@ -814,7 +816,7 @@ export default function AdminDashboard() {
                   </div>
 
                   <div style={{ marginTop: '8px' }}>
-                    <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontSize: '0.88rem', fontWeight: 600, color: 'var(--ink)', marginBottom: '8px' }}>
                       Or paste image URL directly:
                     </label>
                     <div style={{ display: 'flex', gap: '10px' }}>
@@ -823,7 +825,7 @@ export default function AdminDashboard() {
                         placeholder="e.g. https://... or /images/hero.png"
                         value={heroUrlInput}
                         onChange={e => setHeroUrlInput(e.target.value)}
-                        style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#3B2116', color: '#FFFFFF', fontSize: '0.88rem' }}
+                        style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--pink)', background: 'var(--off-white)', color: 'var(--ink)', fontSize: '0.88rem' }}
                       />
                       <button
                         type="button"
@@ -843,8 +845,8 @@ export default function AdminDashboard() {
                   {/* 360 Rotation Toggle Control */}
                   <div style={{ marginTop: '12px', paddingTop: '16px', borderTop: '1px solid rgba(243,195,206,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                     <div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <RefreshCw size={18} color="var(--pink)" className={heroRotationEnabled ? 'rotate-360-slow' : ''} />
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <RefreshCw size={18} color="var(--ink)" className={heroRotationEnabled ? 'rotate-360-slow' : ''} />
                         Slow 360° Rotation Animation Effect
                       </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--pink-light)', marginTop: '3px' }}>
@@ -860,7 +862,7 @@ export default function AdminDashboard() {
                         }}
                         style={{ width: '18px', height: '18px', accentColor: 'var(--pink)', cursor: 'pointer' }}
                       />
-                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: heroRotationEnabled ? '#2ecc71' : '#aaaaaa' }}>
+                      <span style={{ fontSize: '0.88rem', fontWeight: 700, color: heroRotationEnabled ? '#347049' : '#aaaaaa' }}>
                         {heroRotationEnabled ? 'Rotation Active' : 'Disabled'}
                       </span>
                     </label>
@@ -869,7 +871,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="admin-settings-section">
-                <h4 style={{ marginBottom: '16px', color: '#FFFFFF' }}>Promo Code Configuration</h4>
+                <h4 style={{ marginBottom: '16px', color: 'var(--ink)' }}>Promo Code Configuration</h4>
                 <form onSubmit={handleSavePromo}>
                   <div className="form-group" style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', fontWeight: 600 }}>Enable Promo Code?</label>
@@ -921,7 +923,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="admin-settings-section" style={{ marginTop: '24px' }}>
-                <h4 style={{ marginBottom: '16px', color: '#FFFFFF' }}>Pickup Location & Hours Notice</h4>
+                <h4 style={{ marginBottom: '16px', color: 'var(--ink)' }}>Pickup Location & Hours Notice</h4>
                 <form onSubmit={handleSavePickup}>
                   <div className="form-group" style={{ marginBottom: '16px' }}>
                     <label>Pickup Branch Address *</label>
@@ -1018,7 +1020,7 @@ export default function AdminDashboard() {
                       onChange={e => {
                         if (e.target.value !== 'custom') setBadge(e.target.value);
                       }}
-                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#3B2116', color: '#FFFFFF', fontSize: '0.88rem' }}
+                      style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--pink)', background: 'var(--off-white)', color: 'var(--ink)', fontSize: '0.88rem' }}
                     >
                       <option value="">Auto (Best Seller based on sales)</option>
                       <option value="NONE">None (Hide Badge)</option>
@@ -1033,7 +1035,7 @@ export default function AdminDashboard() {
                       placeholder="e.g. NEW!, HOT, SPECIAL"
                       value={badge}
                       onChange={e => setBadge(e.target.value)}
-                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#3B2116', color: '#FFFFFF', fontSize: '0.88rem' }}
+                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--pink)', background: 'var(--off-white)', color: 'var(--ink)', fontSize: '0.88rem' }}
                     />
                   </div>
                 </div>
@@ -1113,7 +1115,7 @@ export default function AdminDashboard() {
                                   <input type="number" placeholder="Price (EGP)" value={bp.price || ''}
                                     onChange={e => { const u = [...boxPricing]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setBoxPricing(u); }}
                                     style={{ flex: 1 }} />
-                                  <button type="button" onClick={() => setBoxPricing(boxPricing.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px' }}>
+                                  <button type="button" onClick={() => setBoxPricing(boxPricing.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#a33832', cursor: 'pointer', padding: '4px' }}>
                                     <Trash2 size={16} />
                                   </button>
                                 </div>
@@ -1149,31 +1151,31 @@ export default function AdminDashboard() {
                       <label>Available Flavors</label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
                         {flavors.map((flavor, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'rgba(0, 0, 0, 0.25)', padding: '12px', borderRadius: '12px', border: '1px solid var(--pink)' }}>
-                            <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', background: '#3B2116', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px dashed var(--pink)' }}
+                          <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'center', background: 'var(--off-white)', padding: '12px', borderRadius: '12px', border: '1px solid var(--pink)' }}>
+                            <div style={{ width: '56px', height: '56px', borderRadius: '8px', overflow: 'hidden', background: 'var(--off-white)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: '1px dashed var(--pink)' }}
                               onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
                               {flavor.image ? (
                                 <img src={resolveImageUrl(flavor.image)} alt={flavor.name || 'Flavor'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : (
-                                <ImageIcon size={18} color="var(--pink)" />
+                                <ImageIcon size={18} color="var(--ink)" />
                               )}
                             </div>
                             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                               <input type="text" placeholder={`Flavor ${idx + 1} name`} value={flavor.name}
                                 onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], name: e.target.value }; setFlavors(u); }}
-                                style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem', background: '#3B2116', color: '#FFFFFF' }} />
+                                style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem', background: 'var(--off-white)', color: 'var(--ink)' }} />
                               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                 <span style={{ fontSize: '0.75rem', color: 'var(--pink-light)', whiteSpace: 'nowrap' }}>+ EGP</span>
                                 <input type="number" placeholder="Surcharge" min="0" step="0.01" value={flavor.price || ''}
                                   onChange={e => { const u = [...flavors]; u[idx] = { ...u[idx], price: parseFloat(e.target.value) || 0 }; setFlavors(u); }}
-                                  style={{ width: '90px', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem', background: '#3B2116', color: '#FFFFFF' }} />
-                                <button type="button" style={{ fontSize: '0.7rem', color: 'var(--pink)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                  style={{ width: '90px', padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--pink)', fontSize: '0.82rem', background: 'var(--off-white)', color: 'var(--ink)' }} />
+                                <button type="button" style={{ fontSize: '0.7rem', color: 'var(--ink)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                   onClick={() => { setCropTarget('flavor'); setFlavorCropIndex(idx); document.getElementById('hiddenFileInput')?.click(); }}>
                                   {flavor.image ? 'Change img' : 'Upload img'}
                                 </button>
                               </div>
                             </div>
-                            <button type="button" onClick={() => setFlavors(flavors.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px', flexShrink: 0 }}>
+                            <button type="button" onClick={() => setFlavors(flavors.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#a33832', cursor: 'pointer', padding: '4px', flexShrink: 0 }}>
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -1262,7 +1264,7 @@ export default function AdminDashboard() {
                           }
                         })()}
 
-                        <button type="button" onClick={() => setCustomizations(customizations.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', padding: '4px' }}>
+                        <button type="button" onClick={() => setCustomizations(customizations.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#a33832', cursor: 'pointer', padding: '4px' }}>
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -1381,22 +1383,22 @@ export default function AdminDashboard() {
             {!editingCategory && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontSize: '1rem', color: '#FFFFFF', margin: 0 }}>Current Categories</h3>
+                  <h3 style={{ fontSize: '1rem', color: 'var(--ink)', margin: 0 }}>Current Categories</h3>
                   <button onClick={() => { setEditingCategory({ id: '', name: '', hasDescription: true, flavorType: 'none', sizeType: 'none', isBoxBuilder: false }); setCategoryForm({ id: '', name: '', hasDescription: true, flavorType: 'none', sizeType: 'none', isBoxBuilder: false }); }} className="btn btn-sm btn-secondary">
                     + New Category
                   </button>
                 </div>
-                <div style={{ background: 'rgba(0, 0, 0, 0.25)', borderRadius: '12px', padding: '12px', border: '1px solid rgba(243, 195, 206, 0.2)' }}>
+                <div style={{ background: 'var(--off-white)', borderRadius: '12px', padding: '12px', border: '1px solid rgba(243, 195, 206, 0.2)' }}>
                   {categories.map(cat => (
                     <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(243, 195, 206, 0.15)' }}>
                       <div>
-                        <div style={{ fontWeight: 600, color: '#FFFFFF', fontSize: '0.9rem' }}>{cat.name}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--ink)', fontSize: '0.9rem' }}>{cat.name}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--pink-light)' }}>
                           Flavors: {cat.flavorType} | Sizes: {cat.sizeType}
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => { setEditingCategory(cat); setCategoryForm(cat); }} style={{ background: 'none', border: 'none', color: 'var(--pink)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}>Edit</button>
+                        <button onClick={() => { setEditingCategory(cat); setCategoryForm(cat); }} style={{ background: 'none', border: 'none', color: 'var(--ink)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}>Edit</button>
                         {['cookie', 'cake', 'item'].includes(cat.id) ? (
                           <span style={{ fontSize: '0.7rem', color: 'rgba(255, 255, 255, 0.5)' }}>Default</span>
                         ) : (

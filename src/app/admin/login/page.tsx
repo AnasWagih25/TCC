@@ -34,7 +34,7 @@ export default function AdminLogin() {
     setError('');
 
     const normalizedEmail = email.trim();
-    const normalizedPassword = password.trim();
+    const normalizedPassword = password;
 
     if (!normalizedEmail || !normalizedPassword) {
       setError('Email and password are required.');
@@ -72,8 +72,8 @@ export default function AdminLogin() {
       <div className="admin-login-page">
         <div className="login-card">
           <div className="login-icon"><Lock size={36} color="var(--brown)" strokeWidth={1.5} /></div>
-          <h2>Admin Access</h2>
-          <p className="login-subtitle">For staff use only (Firebase Auth)</p>
+          <h2>A little behind the scenes.</h2>
+          <p className="login-subtitle">Sign in to manage the bakery.</p>
           
           <form onSubmit={handleLogin}>
             <div className="form-group" style={{ textAlign: 'left' }}>

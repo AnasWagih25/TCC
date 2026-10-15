@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Cookie, Minus, Plus, Package, X, ShoppingCart, AlertCircle } from 'lucide-react';
-import { useCart, resolveImageUrl, type BoxFlavorSelection, type Product } from '@/context/CartContext';
+import React, { useState, useEffect, useRef } from 'react';
+import { Cookie, Minus, Plus, Package, X, ShoppingCart, AlertCircle, Search } from 'lucide-react';
+import { useCart, type BoxFlavorSelection, type Product } from '@/context/CartContext';
+import useDialog from '@/components/useDialog';
 import ProductImageSlider from '@/components/ProductImageSlider';
 import OptimizedImage from '@/components/OptimizedImage';
 
 export default function Shop() {
   const { products, addToCart, addBoxToCart, categories, orders } = useCart();
-  const [selectedSizes, setSelectedSizes] = useState<Record<string, 'Normal' | 'Mini'>>({});
+  const [category, setCategory] = useState('all');
+  const [search, setSearch] = useState('');
+  const openedFromLink = useRef(false);
+  const filteredProducts = products.filter(p => (category === 'all' || p.type === category) && `${p.name} ${p.description} ${p.flavor || ''}`.toLowerCase().includes(search.toLowerCase()));
 
   // Product detail modal state
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
@@ -25,23 +27,20 @@ export default function Shop() {
   const [boxModalCustomizations, setBoxModalCustomizations] = useState<Record<string, boolean>>({});
   const [boxModalCustomizationTexts, setBoxModalCustomizationTexts] = useState<Record<string, string>>({});
 
-  const handleSizeChange = (id: string, size: 'Normal' | 'Mini') => {
-    setSelectedSizes(prev => ({ ...prev, [id]: size }));
-  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     const container = document.getElementById('toastContainer');
     if (container) {
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
-      toast.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span><span>${message}</span>`;
+      toast.textContent = message;
       container.appendChild(toast);
       setTimeout(() => toast.remove(), 3000);
     }
   };
 
   const handleAddToCart = (id: string, size: 'Normal' | 'Mini', flavorName?: string) => {
-    const cat = categories.find(c => c.id === detailProduct?.type);
+    const cat = categories.find(c => c.id === detailProduct?.type) || categories.find(c => c.id === (detailProduct?.price.mini ? 'cake' : 'cookie'));
     const selectedCustomizations = detailProduct?.customizations?.filter(c => detailCustomizations[c.name]).map(c => {
       const sizePrice = cat?.sizeType === 'normal_mini' ? c.pricing?.[size] : c.price;
       const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
@@ -59,7 +58,7 @@ export default function Shop() {
 
   // Product detail modal helpers
   const openDetailModal = (product: Product) => {
-    const cat = categories.find(c => c.id === product.type) || categories[0];
+    const cat = categories.find(c => c.id === product.type) || categories.find(c => c.id === (product.price.mini > 0 ? 'cake' : 'cookie')) || categories[0];
     if (cat?.isBoxBuilder) {
       openBoxModal(product);
       return;
@@ -105,10 +104,9 @@ export default function Shop() {
   const handleBoxAddToCart = () => {
     if (!boxModalProduct || !boxModalSize) return;
     const selections: BoxFlavorSelection[] = Object.entries(boxModalSelections)
-      .filter(([_, qty]) => qty > 0)
+      .filter(([, qty]) => qty > 0)
       .map(([name, quantity]) => ({ name, quantity }));
     
-    const cat = categories.find(c => c.id === boxModalProduct?.type);
     const selectedCustomizations = boxModalProduct?.customizations?.filter(c => boxModalCustomizations[c.name]).map(c => {
       const sizePrice = boxModalSize ? c.pricing?.[boxModalSize.toString()] : c.price;
       const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
@@ -148,6 +146,21 @@ export default function Shop() {
     return { basePrice, surcharge, total: basePrice + surcharge };
   };
 
+  const detailDialog = useDialog(!!detailProduct, closeDetailModal);
+  const boxDialog = useDialog(!!boxModalProduct, closeBoxModal);
+  useEffect(() => {
+    if (openedFromLink.current || !products.length) return;
+    const productId = new URLSearchParams(window.location.search).get('product');
+    const product = products.find(item => item.id === productId);
+    if (product) {
+      openedFromLink.current = true;
+      const timer = window.setTimeout(() => openDetailModal(product), 0);
+      return () => { window.clearTimeout(timer); openedFromLink.current = false; };
+    }
+  // Opening a product from the URL synchronizes external navigation with the dialog.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, categories]);
+
   return (
     <div className="page active polka-bg-light" id="shopPage">
       <div className="shop-page" style={{ position: 'relative' }}>
@@ -155,20 +168,22 @@ export default function Shop() {
         <div className="section-container" style={{ position: 'relative', zIndex: 2 }}>
           <div className="section-header" style={{ marginBottom: '80px', position: 'relative' }}>
             <div className="sticker pink" style={{ top: '-40px', right: '10%', transform: 'rotate(15deg)', width: '100px', fontSize: '1.2rem' }}>MENU</div>
-            <h2 className="section-title" style={{ fontSize: '3.5rem', color: '#FFFFFF' }}>Our Cookie Menu</h2>
-            <p className="section-subtitle" style={{ fontSize: '1.2rem', maxWidth: '600px', color: 'var(--pink-light)' }}>Add your favorite concepts to the cart. Fresh batches baked daily.</p>
+            <h1 className="section-title">Pick your happy.</h1>
+            <p className="section-subtitle" style={{ fontSize: '1.2rem', maxWidth: '600px', color: 'var(--pink-light)' }}>Cookies, cakes, and boxes made your way. What are you in the mood for?</p>
           </div>
           
+          <div className="shop-tools"><div className="category-tabs" aria-label="Filter menu by category"><button className={`filter-chip ${category === 'all' ? 'active' : ''}`} aria-pressed={category === 'all'} onClick={() => setCategory('all')}>Everything</button>{categories.filter(cat => products.some(p => p.type === cat.id)).map(cat => <button key={cat.id} className={`filter-chip ${category === cat.id ? 'active' : ''}`} aria-pressed={category === cat.id} onClick={() => setCategory(cat.id)}>{cat.name}</button>)}</div><label className="shop-search"><Search size={17} /><span className="sr-only">Search the menu</span><input type="search" placeholder="Find your flavor…" value={search} onChange={e => setSearch(e.target.value)} /></label></div>
+          <p className="shop-result-count" aria-live="polite">{filteredProducts.length} {filteredProducts.length === 1 ? 'concept' : 'concepts'} to make your day</p>
           <div className="shop-grid">
-            {products.length === 0 ? (
+            {filteredProducts.length === 0 ? (
               <div className="shop-empty" style={{ gridColumn: '1 / -1' }}>
                 <div className="empty-icon"><Cookie size={48} color="var(--brown-light)" strokeWidth={1.5} /></div>
-                <h3>No cookies baked today</h3>
-                <p>Check back later for fresh concepts.</p>
+                <h3>{search || category !== 'all' ? 'No concepts match just yet.' : 'The next batch is on its way.'}</h3>
+                <p>Try another flavor or check back for the next batch.</p>{(search || category !== 'all') && <button className="text-link" onClick={() => { setSearch(''); setCategory('all'); }}>Show the full menu</button>}
               </div>
             ) : (
-              products.map((p) => {
-                const cat = categories.find(c => c.id === p.type) || categories[0];
+              filteredProducts.map((p) => {
+                const cat = categories.find(c => c.id === p.type) || categories.find(c => c.id === (p.price.mini > 0 ? 'cake' : 'cookie')) || categories[0];
                 const isOutOfStock = p.stock <= 0;
                 const isLowStock = p.stock > 0 && p.stock <= 10;
                 const isBoxProduct = cat?.isBoxBuilder;
@@ -192,12 +207,12 @@ export default function Shop() {
                   const low = Math.min(...boxOpts.map(o => o.price));
                   displayPrice = low > 0 ? `From EGP ${low}` : 'Custom Box';
                 } else {
-                  displayPrice = `EGP ${Number(p.price.normal).toFixed(0)}`;
+                  displayPrice = cat?.sizeType === 'normal_mini' && p.price.mini > 0 ? `From EGP ${Number(p.price.mini).toFixed(0)}` : `EGP ${Number(p.price.normal).toFixed(0)}`;
                 }
 
                 return (
-                  <div key={p.id} className="product-card" onClick={() => openDetailModal(p)} style={{ cursor: 'pointer' }}>
-                    <div className="product-img-wrapper">
+                  <div key={p.id} className="product-card" style={{ cursor: 'pointer' }}>
+                    <div className="product-img-wrapper" onClick={() => openDetailModal(p)}>
                       {isOutOfStock ? (
                         <span className="product-stock-badge stock-out">Sold Out</span>
                       ) : isLowStock ? (
@@ -245,10 +260,10 @@ export default function Shop() {
       {/* ══════════════════════════════════════════════
           PRODUCT DETAIL MODAL
           ══════════════════════════════════════════════ */}
-      <div className={`modal-overlay ${detailProduct ? 'active' : ''}`} onClick={closeDetailModal}>
+      <div ref={detailDialog} className={`modal-overlay ${detailProduct ? 'active' : ''}`} onClick={closeDetailModal}>
         {detailProduct && (() => {
           const p = detailProduct;
-          const cat = categories.find(c => c.id === p.type) || categories[0];
+          const cat = categories.find(c => c.id === p.type) || categories.find(c => c.id === (p.price.mini > 0 ? 'cake' : 'cookie')) || categories[0];
           const isOut = p.stock <= 0;
           const isLow = p.stock > 0 && p.stock <= 10;
           const isCk = cat?.sizeType === 'none';
@@ -262,8 +277,8 @@ export default function Shop() {
             });
           }
           return (
-            <div className="modal pdm" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: 0, overflow: 'hidden' }}>
-              <button className="modal-close" onClick={closeDetailModal} style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(6px)', borderRadius: '50%', width: '36px', height: '36px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+            <div className="modal pdm" role="dialog" aria-modal="true" aria-label={p.name} onClick={e => e.stopPropagation()} style={{ maxWidth: '480px', padding: 0, overflow: 'hidden' }}>
+              <button className="modal-close" aria-label="Close product details" onClick={closeDetailModal} style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(6px)', borderRadius: '50%', width: '36px', height: '36px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'none' }}>
                 <X size={18} color="var(--brown)" />
               </button>
               {/* Hero image */}
@@ -281,9 +296,9 @@ export default function Shop() {
               </div>
               {/* Content */}
               <div className="modal-body-content" style={{ padding: '16px 18px 18px' }}>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: '#FFFFFF', margin: '0 0 6px', lineHeight: 1.2 }}>{p.name}</h2>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: 'var(--ink)', margin: '0 0 6px', lineHeight: 1.2 }}>{p.name}</h2>
                 {cat?.flavorType === 'single' && p.flavor ? (
-                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--pink)', fontSize: '0.9rem', margin: '0 0 16px', fontStyle: 'italic' }}><Cookie size={14} /> {p.flavor}</p>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ink)', fontSize: '0.9rem', margin: '0 0 16px', fontStyle: 'italic' }}><Cookie size={14} /> {p.flavor}</p>
                 ) : p.description ? (
                   <p style={{ color: 'var(--pink-light)', fontSize: '0.88rem', margin: '0 0 16px', lineHeight: 1.5 }}>{p.description}</p>
                 ) : null}
@@ -291,16 +306,16 @@ export default function Shop() {
                 {/* Size selector for cakes */}
                 {cat?.sizeType === 'normal_mini' && (
                   <div style={{ marginBottom: '20px' }}>
-                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Choose Size</label>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Choose Size</label>
                     <div style={{ display: 'flex', gap: '10px' }}>
                       {(['Normal', 'Mini'] as const).map(sz => {
                         const active = detailSize === sz;
                         const pr = sz === 'Normal' ? p.price.normal : p.price.mini;
                         return (
-                          <button key={sz} onClick={() => setDetailSize(sz)} style={{ flex: 1, padding: '12px 8px', borderRadius: '14px', border: active ? '2.5px solid var(--pink)' : '1.5px solid rgba(243, 195, 206, 0.3)', background: active ? 'var(--pink)' : '#3B2116', cursor: 'pointer', transition: '0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                            <span style={{ fontWeight: 700, fontSize: '0.92rem', color: active ? 'var(--brown)' : '#FFFFFF' }}>{sz}</span>
+                          <button key={sz} onClick={() => setDetailSize(sz)} style={{ flex: 1, padding: '12px 8px', borderRadius: '14px', border: active ? '2px solid var(--ink)' : '1.5px solid rgba(243, 195, 206, 0.3)', background: active ? 'var(--pink)' : 'var(--off-white)', cursor: 'pointer', transition: '0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.92rem', color: active ? 'var(--brown)' : 'var(--ink)' }}>{sz}</span>
                             <span style={{ fontSize: '0.72rem', color: active ? 'var(--brown)' : 'var(--pink-light)' }}>{sz === 'Normal' ? '7-8 Slices' : '5 Slices'}</span>
-                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: active ? 'var(--brown)' : 'var(--pink)', marginTop: '2px' }}>EGP {Number(pr).toFixed(0)}</span>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--ink)', marginTop: '2px' }}>EGP {Number(pr).toFixed(0)}</span>
                           </button>
                         );
                       })}
@@ -311,26 +326,26 @@ export default function Shop() {
                 {/* Customizations */}
                 {p.customizations && p.customizations.length > 0 && (
                   <div style={{ marginBottom: '20px' }}>
-                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--pink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Extra Options</label>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'block' }}>Extra Options</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {p.customizations.map(c => {
                         const sizePrice = cat?.sizeType === 'normal_mini' ? c.pricing?.[detailSize] : c.price;
                         const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
                         const isChecked = !!detailCustomizations[c.name];
                         return (
-                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', borderRadius: '12px', background: isChecked ? '#3B2116' : 'rgba(0, 0, 0, 0.2)', border: isChecked ? '1.5px solid var(--pink)' : '1px solid rgba(243, 195, 206, 0.2)' }}>
+                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', borderRadius: '12px', background: isChecked ? 'var(--off-white)' : 'var(--off-white)', border: isChecked ? '1.5px solid var(--pink)' : '1px solid rgba(243, 195, 206, 0.2)' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                               <input type="checkbox" checked={isChecked}
                                 onChange={e => setDetailCustomizations(prev => ({ ...prev, [c.name]: e.target.checked }))}
                                 style={{ width: '18px', height: '18px', accentColor: 'var(--pink)' }} />
-                              <span style={{ fontSize: '0.9rem', color: '#FFFFFF', fontWeight: 600, flex: 1 }}>{c.name}</span>
-                              <span style={{ fontSize: '0.85rem', color: 'var(--pink)', fontWeight: 700 }}>+ EGP {displayPrice.toFixed(0)}</span>
+                              <span style={{ fontSize: '0.9rem', color: 'var(--ink)', fontWeight: 600, flex: 1 }}>{c.name}</span>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--ink)', fontWeight: 700 }}>+ EGP {displayPrice.toFixed(0)}</span>
                             </label>
                             {c.requiresText && isChecked && (
                               <input type="text" placeholder="Enter text here..." 
                                 value={detailCustomizationTexts[c.name] || ''}
                                 onChange={e => setDetailCustomizationTexts(prev => ({ ...prev, [c.name]: e.target.value }))}
-                                style={{ marginLeft: '28px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#2D1A12', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }} />
+                                style={{ marginLeft: '28px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--pink)', background: 'var(--surface)', color: 'var(--ink)', fontSize: '0.82rem', outline: 'none' }} />
                             )}
                           </div>
                         );
@@ -343,12 +358,12 @@ export default function Shop() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '16px', borderTop: '1px solid rgba(243, 195, 206, 0.2)' }}>
                   <div style={{ flex: '0 0 auto' }}>
                     <div style={{ fontSize: '0.7rem', color: 'var(--pink-light)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Price</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FFFFFF', fontFamily: 'var(--font-display)' }}>EGP {Number(curPrice).toFixed(2)}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--ink)', fontFamily: 'var(--font-display)' }}>EGP {Number(curPrice).toFixed(2)}</div>
                   </div>
                   <button
                     disabled={isOut}
                     onClick={() => handleAddToCart(p.id, isCk ? 'Normal' : detailSize)}
-                    style={{ flex: 1, padding: '14px 20px', borderRadius: '50px', border: 'none', background: isOut ? '#555' : 'var(--pink)', color: isOut ? '#fff' : 'var(--brown)', fontSize: '0.95rem', fontWeight: 700, cursor: isOut ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s', fontFamily: 'var(--font-body)', opacity: isOut ? 0.6 : 1 }}
+                    style={{ flex: 1, padding: '14px 20px', borderRadius: '50px', border: 'none', background: isOut ? '#ddd0c0' : 'var(--ink)', color: isOut ? 'var(--muted)' : 'var(--paper)', fontSize: '0.95rem', fontWeight: 700, cursor: isOut ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: '0.2s', fontFamily: 'var(--font-body)', opacity: isOut ? 0.6 : 1 }}
                   >
                     {isOut ? 'Sold Out' : (<><ShoppingCart size={18} /> Add to Cart</>)}
                   </button>
@@ -362,7 +377,7 @@ export default function Shop() {
       {/* ══════════════════════════════════════════════
           BOX BUILDER MODAL
           ══════════════════════════════════════════════ */}
-      <div className={`modal-overlay ${boxModalProduct ? 'active' : ''}`}>
+      <div ref={boxDialog} className={`modal-overlay ${boxModalProduct ? 'active' : ''}`} onClick={event => { if (event.target === event.currentTarget) closeBoxModal(); }}>
         {boxModalProduct && (() => {
           const p = boxModalProduct;
           const boxOptions = p.boxPricing && p.boxPricing.length > 0
@@ -370,12 +385,12 @@ export default function Shop() {
             : (p.boxSizes || []).map(size => ({ size, price: 0 }));
           const totalPicked = Object.values(boxModalSelections).reduce((s, n) => s + n, 0);
           const isFull = boxModalSize != null && totalPicked === boxModalSize;
-          const { basePrice, surcharge, total } = getBoxModalPricing();
+          const { surcharge, total } = getBoxModalPricing();
 
           return (
-            <div className="modal" style={{ maxWidth: '600px' }}>
+            <div className="modal" role="dialog" aria-modal="true" aria-label={`Build ${p.name}`} style={{ maxWidth: '600px' }}>
               <div className="modal-header">
-                <button className="modal-close" onClick={closeBoxModal}><X size={18} /></button>
+                <button className="modal-close" aria-label="Close box builder" onClick={closeBoxModal}><X size={18} /></button>
                 <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <Package size={22} /> {p.name}
                 </h2>
@@ -411,8 +426,8 @@ export default function Shop() {
                             border: isActive ? '2.5px solid var(--pink)' : '1.5px solid rgba(243, 195, 206, 0.3)',
                             fontSize: '0.85rem',
                             fontWeight: isActive ? 700 : 500,
-                            background: isActive ? 'var(--pink)' : '#3B2116',
-                            color: isActive ? 'var(--brown)' : '#FFFFFF',
+                            background: isActive ? 'var(--pink)' : 'var(--off-white)',
+                            color: isActive ? 'var(--brown)' : 'var(--ink)',
                             cursor: 'pointer',
                             transition: '0.2s',
                             display: 'flex',
@@ -448,7 +463,7 @@ export default function Shop() {
                         padding: '4px 14px',
                         borderRadius: '50px',
                         background: isFull ? 'rgba(46,204,113,0.25)' : 'var(--pink)',
-                        color: isFull ? '#2ecc71' : 'var(--brown)',
+                        color: isFull ? '#347049' : 'var(--brown)',
                         transition: '0.25s',
                         border: 'none',
                         textTransform: 'none',
@@ -465,7 +480,7 @@ export default function Shop() {
                           <div key={flavor.name} style={{
                             display: 'flex', alignItems: 'center', gap: '10px',
                             padding: '10px 12px', borderRadius: '12px',
-                            background: qty > 0 ? '#3B2116' : 'rgba(0, 0, 0, 0.2)',
+                            background: qty > 0 ? 'var(--off-white)' : 'var(--off-white)',
                             border: `1.5px solid ${qty > 0 ? 'var(--pink)' : 'rgba(243, 195, 206, 0.2)'}`,
                             transition: '0.2s',
                           }}>
@@ -475,11 +490,11 @@ export default function Shop() {
                               </div>
                             )}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#FFFFFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--ink)', overflowWrap: 'anywhere' }}>
                                 {flavor.name}
                               </div>
                               {hasSurcharge ? (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--pink)', fontWeight: 700 }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--ink)', fontWeight: 700 }}>
                                   + EGP {flavor.price.toFixed(0)} each
                                 </div>
                               ) : (
@@ -490,10 +505,11 @@ export default function Shop() {
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                               <button
+                                aria-label={`Remove one ${flavor.name} cookie`}
                                 onClick={() => handleBoxFlavorQty(flavor.name, -1, boxModalSize)}
                                 disabled={qty <= 0}
                                 style={{
-                                  width: '32px', height: '32px', borderRadius: '50%',
+                                  width: '44px', height: '44px', borderRadius: '50%',
                                   border: 'none', background: qty > 0 ? 'var(--pink)' : 'rgba(255,255,255,0.1)',
                                   color: qty > 0 ? 'var(--brown)' : '#888', cursor: qty > 0 ? 'pointer' : 'default',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -502,14 +518,15 @@ export default function Shop() {
                               >
                                 <Minus size={16} />
                               </button>
-                              <span style={{ width: '28px', textAlign: 'center', fontSize: '1rem', fontWeight: 700, color: '#FFFFFF' }}>
+                              <span style={{ width: '28px', textAlign: 'center', fontSize: '1rem', fontWeight: 700, color: 'var(--ink)' }}>
                                 {qty}
                               </span>
                               <button
+                                aria-label={`Add one ${flavor.name} cookie`}
                                 onClick={() => handleBoxFlavorQty(flavor.name, 1, boxModalSize)}
                                 disabled={totalPicked >= boxModalSize}
                                 style={{
-                                  width: '32px', height: '32px', borderRadius: '50%',
+                                  width: '44px', height: '44px', borderRadius: '50%',
                                   border: 'none', background: totalPicked < boxModalSize ? 'var(--pink)' : 'rgba(255,255,255,0.1)',
                                   color: totalPicked < boxModalSize ? 'var(--brown)' : '#888', cursor: totalPicked < boxModalSize ? 'pointer' : 'default',
                                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -538,19 +555,19 @@ export default function Shop() {
                         const displayPrice = sizePrice !== undefined ? sizePrice : c.price;
                         const isChecked = !!boxModalCustomizations[c.name];
                         return (
-                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', borderRadius: '12px', background: isChecked ? '#3B2116' : 'rgba(0, 0, 0, 0.2)', border: `1.5px solid ${isChecked ? 'var(--pink)' : 'rgba(243, 195, 206, 0.2)'}` }}>
+                          <div key={c.name} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', borderRadius: '12px', background: isChecked ? 'var(--off-white)' : 'var(--off-white)', border: `1.5px solid ${isChecked ? 'var(--pink)' : 'rgba(243, 195, 206, 0.2)'}` }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                               <input type="checkbox" checked={isChecked}
                                 onChange={e => setBoxModalCustomizations(prev => ({ ...prev, [c.name]: e.target.checked }))}
                                 style={{ width: '18px', height: '18px', accentColor: 'var(--pink)' }} />
-                              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#FFFFFF', flex: 1 }}>{c.name}</span>
-                              <span style={{ fontSize: '0.85rem', color: 'var(--pink)', fontWeight: 700 }}>+ EGP {displayPrice.toFixed(0)}</span>
+                              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--ink)', flex: 1 }}>{c.name}</span>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--ink)', fontWeight: 700 }}>+ EGP {displayPrice.toFixed(0)}</span>
                             </label>
                             {c.requiresText && isChecked && (
                               <input type="text" placeholder="Enter text here..." 
                                 value={boxModalCustomizationTexts[c.name] || ''}
                                 onChange={e => setBoxModalCustomizationTexts(prev => ({ ...prev, [c.name]: e.target.value }))}
-                                style={{ marginLeft: '28px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--pink)', background: '#2D1A12', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }} />
+                                style={{ marginLeft: '28px', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--pink)', background: 'var(--surface)', color: 'var(--ink)', fontSize: '0.82rem', outline: 'none' }} />
                             )}
                           </div>
                         );
@@ -566,7 +583,7 @@ export default function Shop() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--pink-light)', fontWeight: 600 }}>Box Total</div>
-                      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#FFFFFF' }}>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--ink)' }}>
                         EGP {total.toFixed(0)}
                         {surcharge > 0 && (
                           <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--pink-light)', marginLeft: '6px' }}>
