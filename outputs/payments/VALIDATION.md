@@ -25,3 +25,17 @@ Mandatory 50% InstaPay deposit or full InstaPay payment, private transaction scr
 Physical iPhone/Android keyboard/safe-area behavior remains a hardware check. Screenshot OCR checks the displayed amount; only staff confirmation against the receiving account verifies real funds.
 
 Screenshots: `deposit-mobile.png`, `full-payment-mobile.png`, and the dialog stabilization screenshots in `outputs/menu-dialogs/`, including `live-box-desktop.png` from production.
+
+## Gemini scanning and rounded payments — 17 October 2026
+
+- Google AI Studio key validated against Google's API and saved only in ignored local server configuration and a Vercel production Secret. It is absent from tracked source and compiled browser assets.
+- Gemini 3.5 Flash-Lite returned a valid structured EGP 32.50 transcription from the synthetic test receipt. Gemini 3.8 Flash returned temporary capacity errors, so production uses the verified Flash-Lite model with supported low thinking.
+- All 117 tests pass, including 14 isolated Gemini privacy/parser/provider-selection cases and rounding regressions across signed proofs, orders and staff confirmation. Targeted ESLint, TypeScript and the production build pass.
+- Live rounded deposit: EGP 33.00 against EGP 32.50 required for an EGP 65 total returned HTTP 200, plan `deposit`, readability confidence 100, in 5.31 seconds. The live checkout displayed EGP 32.00 remaining and allowed the screenshot to satisfy the mandatory proof requirement.
+- Live rounded full payment: EGP 65.00 against EGP 64.01 returned HTTP 200, plan `full`, confidence 100, in 3.41 seconds.
+- Live underpayment: EGP 32.50 against EGP 32.51 required returned HTTP 422 in 5.84 seconds and no signed proof.
+- Mobile checkout checked at 390×844: page scroll width equals viewport width, the payment panel fits and the rounded deposit match remains readable. Screenshot: `gemini-receipt-match-mobile.png`.
+- The scanner extracts without the expected order amount, and the server independently validates the amount/currency/status before applying the exact-or-next-whole-EGP policy. Submitted amounts and balances use the actual scanned transfer, including in saved orders, admin review and emails.
+- No live order, payment, stock reservation or customer email was created. Temporary bag selections and frontend receipt data were removed after verification. Physical-phone testing remains separate from these viewport checks.
+
+Gemini confidence is a model readability estimate, not bank verification. Staff still confirms actual funds received; edited screenshots cannot be authenticated by amount extraction.

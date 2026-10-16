@@ -90,7 +90,7 @@ export default function CheckoutPayment({ total, disabled, onChange }: { total: 
       <label><input type="radio" name="balance-method" checked={remainingMethod === 'cash'} onChange={() => setRemainingMethod('cash')} /> Cash on delivery / pickup</label>
       <label><input type="radio" name="balance-method" checked={remainingMethod === 'instapay'} onChange={() => setRemainingMethod('instapay')} /> InstaPay</label>
     </fieldset>}
-    <div className="checkout-transfer__send"><div><span>Transfer now through InstaPay</span><strong>{egp(amountDue)}</strong><small>{plan === 'deposit' ? `Then ${egp(remainingAmount)} on delivery or pickup.` : 'Your full order total, including delivery.'}</small></div>
+    <div className="checkout-transfer__send"><div><span>{matches ? 'Transfer shown in your screenshot' : 'Transfer now through InstaPay'}</span><strong>{egp(matches ? validated.amount : amountDue)}</strong><small>{plan === 'deposit' ? `Then ${egp(remainingAmount)} on delivery or pickup.` : 'Your full order total, including delivery.'}</small></div>
       <a href={INSTAPAY_LINK} target="_blank" rel="noopener noreferrer">Open InstaPay <ExternalLink size={16} aria-hidden="true" /></a>
     </div>
     {roundedAmount > amountDue && <p className="checkout-transfer__privacy">You can round {egp(amountDue)} up to {egp(roundedAmount)}. Any extra deposit reduces your remaining balance.</p>}
