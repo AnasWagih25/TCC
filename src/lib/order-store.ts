@@ -51,10 +51,12 @@ export async function persistCheckout(db: Firestore, request: CheckoutRequest): 
     const pickup = pickupDoc.exists ? resolvePickupSettings(pickupDoc.data() as PickupSettings) : defaultPickupSettings;
     const priced = priceOrder(request, products, categories, promoDoc.exists ? promoDoc.data() as PromoCode : null, pickup);
     const { amountDue } = paymentAmounts(priced.total, request.payment.plan);
-    const receipt = verifyPaymentProof(request.payment.proofToken, amountDue);
-    if (matchPaymentPlan(priced.total, receipt.detectedAmount) !== request.payment.plan) throw new OrderError('The screenshot does not match the selected payment option. Review your transfer and scan it again.');
+    const receipt = verifyPaymentProof(request.payment.proofToken, amountDue, request.payment.plan === 'deposit' ? priced.total : undefined);
+    const plan = matchPaymentPlan(priced.total, receipt.detectedAmount);
+    if (!plan || (request.payment.plan === 'full' && plan !== 'full')) throw new OrderError('The screenshot does not match the selected payment option. Review your transfer and scan it again.');
     const amountSubmitted = receipt.detectedAmount;
     const remainingAmount = remainingAfterPayment(priced.total, amountSubmitted);
+    const remainingMethod = plan === 'full' ? 'instapay' : request.payment.remainingMethod;
     const claimRef = db.collection('paymentProofClaims').doc(receipt.sha256);
     const claim = await transaction.get(claimRef);
     if (claim.exists) throw new OrderError('This payment screenshot has already been submitted with another order. Contact the bakery if you need help.', 409);
@@ -62,8 +64,8 @@ export async function persistCheckout(db: Firestore, request: CheckoutRequest): 
     const order: Order = {
       id, date: new Date().toISOString(), source: 'web', deliveryMethod: request.deliveryMethod,
       customer, items: priced.items, subtotal: priced.subtotal, total: priced.total, deliveryFee: priced.deliveryFee,
-      discount: priced.discount, promoCode: request.promoCode, paymentMethod: request.paymentMethod, paymentStatus: 'unpaid',
-      payment: { plan: request.payment.plan, amountSubmitted, remainingAmount, remainingMethod: request.payment.remainingMethod, status: 'pending_review', receipt },
+      discount: priced.discount, promoCode: request.promoCode, paymentMethod: remainingMethod, paymentStatus: 'unpaid',
+      payment: { plan, amountSubmitted, remainingAmount, remainingMethod, status: 'pending_review', receipt },
       status: 'pending', email: { status: 'pending', attempts: 0 },
       ...(request.deliveryMethod === 'pickup' ? { pickupSnapshot: pickup } : {}),
     };

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     if (scan.confidence < 45 || detected.amount === null) return response({ error: detected.reason || 'The screenshot is not clear enough to read reliably. Please upload a sharper transaction confirmation.' }, 422);
     const deposit = paymentAmounts(total, 'deposit').amountDue;
     const plan = matchPaymentPlan(total, detected.amount);
-    if (!plan) return response({ error: `The screenshot shows EGP ${detected.amount.toFixed(2)}. Your deposit is EGP ${deposit.toFixed(2)}, or pay EGP ${total.toFixed(2)} in full. Either amount may be rounded up to the next whole pound. Upload the matching transaction.`, detectedAmount: detected.amount }, 422);
+    if (!plan) return response({ error: `The screenshot shows EGP ${detected.amount.toFixed(2)}. Your deposit is EGP ${deposit.toFixed(2)}, or pay EGP ${total.toFixed(2)} in full. Upload the matching transaction.`, detectedAmount: detected.amount }, 422);
     const id = randomUUID();
     const receipt: PaymentReceipt = { id, path: `payment-receipts/${id}.jpg`, sha256: createHash('sha256').update(image).digest('hex'), detectedAmount: detected.amount, confidence: scan.confidence, uploadedAt: new Date().toISOString() };
     await adminStorage().file(receipt.path).save(image, { resumable: false, contentType: 'image/jpeg', metadata: { cacheControl: 'private, no-store', metadata: { purpose: 'order-payment-proof' } } });

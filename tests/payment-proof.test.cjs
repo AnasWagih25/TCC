@@ -22,11 +22,20 @@ test('a signed receipt retains only its authenticated metadata and binds the exp
   assert.throws(() => verifyPaymentProof(token, 250.02), /matching the selected payment amount/);
 });
 
-test('signed proofs permit only the exact amount or its whole-pound ceiling and never round down', () => {
+test('signed proofs permit only exact or EGP 1, 5 and 10 ceiling amounts and never round down', () => {
   const { signPaymentProof, verifyPaymentProof } = harness();
   assert.equal(verifyPaymentProof(signPaymentProof(receipt({ detectedAmount: 126 })), 125.01).detectedAmount, 126);
   for (const detectedAmount of [125, 125.5, 126.01, 127, 125.014]) assert.throws(() => verifyPaymentProof(signPaymentProof(receipt({ detectedAmount })), 125.01), /matching the selected payment amount/);
   assert.throws(() => verifyPaymentProof(signPaymentProof(receipt({ detectedAmount: 126 })), 125), /matching the selected payment amount/);
+  for (const detectedAmount of [192.5, 193, 195, 200]) assert.equal(verifyPaymentProof(signPaymentProof(receipt({ detectedAmount })), 192.5).detectedAmount, detectedAmount);
+  for (const detectedAmount of [192.49, 194, 196, 200.01, 205]) assert.throws(() => verifyPaymentProof(signPaymentProof(receipt({ detectedAmount })), 192.5), /matching the selected payment amount/);
+});
+
+test('an alternative server-priced full total can upgrade a deposit proof without accepting other amounts', () => {
+  const { signPaymentProof, verifyPaymentProof } = harness();
+  for (const detectedAmount of [385, 390]) assert.equal(verifyPaymentProof(signPaymentProof(receipt({ detectedAmount })), 192.5, 385).detectedAmount, detectedAmount);
+  assert.throws(() => verifyPaymentProof(signPaymentProof(receipt({ detectedAmount: 385 })), 192.5), /matching the selected payment amount/);
+  assert.throws(() => verifyPaymentProof(signPaymentProof(receipt({ detectedAmount: 400 })), 192.5, 385), /matching the selected payment amount/);
 });
 
 test('changing the amount, screenshot path, hash or expiry invalidates the signature', () => {

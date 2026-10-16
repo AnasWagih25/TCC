@@ -16,7 +16,7 @@ export function signPaymentProof(receipt: PaymentReceipt) {
   return `${payload}.${signature(payload).toString('base64url')}`;
 }
 
-export function verifyPaymentProof(token: string, expectedAmount: number): PaymentReceipt {
+export function verifyPaymentProof(token: string, expectedAmount: number, alternativeExpectedAmount?: number): PaymentReceipt {
   try {
     if (typeof token !== 'string' || token.length > 6000) throw new Error();
     const [payload, signed, ...extra] = token.split('.');
@@ -27,7 +27,7 @@ export function verifyPaymentProof(token: string, expectedAmount: number): Payme
     const receipt = data.receipt as PaymentReceipt;
     if (data.version !== 1 || !Number.isFinite(data.expires) || data.expires < Date.now() || data.expires > Date.now() + lifetime + 1000) throw new Error();
     if (!receipt || !/^[a-f0-9-]{36}$/i.test(receipt.id) || receipt.path !== `payment-receipts/${receipt.id}.jpg` || !/^[a-f0-9]{64}$/.test(receipt.sha256)) throw new Error();
-    if (!amountMatchesPayment(receipt.detectedAmount, expectedAmount)) throw new Error();
+    if (!amountMatchesPayment(receipt.detectedAmount, expectedAmount) && (alternativeExpectedAmount === undefined || !amountMatchesPayment(receipt.detectedAmount, alternativeExpectedAmount))) throw new Error();
     if (!Number.isFinite(receipt.confidence) || receipt.confidence < 45 || receipt.confidence > 100 || !Number.isFinite(Date.parse(receipt.uploadedAt))) throw new Error();
     return receipt;
   } catch (error) {

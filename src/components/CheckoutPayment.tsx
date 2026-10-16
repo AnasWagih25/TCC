@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ExternalLink, ImagePlus, LoaderCircle, X } from 'lucide-react';
 import OptimizedImage from './OptimizedImage';
-import { amountMatchesPayment, paymentAmounts, remainingAfterPayment, type CheckoutPayment as Payment, type PaymentPlan, type RemainingPaymentMethod } from '@/lib/payment-types';
+import { matchPaymentPlan, paymentAmounts, remainingAfterPayment, type CheckoutPayment as Payment, type PaymentPlan, type RemainingPaymentMethod } from '@/lib/payment-types';
 import './checkout-payment.css';
 
 export const INSTAPAY_LINK = 'https://ipn.eg/S/halamorshdy/instapay/5C7G4R';
@@ -36,9 +36,8 @@ export default function CheckoutPayment({ total, disabled, onChange }: { total: 
   const fileInput = useRef<HTMLInputElement>(null);
   const sequence = useRef(0);
   const { amountDue, remainingAmount: scheduledBalance } = paymentAmounts(total, plan);
-  const matches = validated !== null && validated.total === total && validated.plan === plan && amountMatchesPayment(validated.amount, amountDue);
+  const matches = validated !== null && validated.total === total && validated.plan === plan && matchPaymentPlan(total, validated.amount) === plan;
   const remainingAmount = matches ? remainingAfterPayment(total, validated.amount) : scheduledBalance;
-  const roundedAmount = Math.ceil(amountDue);
 
   useEffect(() => {
     onChange(matches && validated ? { plan, remainingMethod: plan === 'full' ? 'instapay' : remainingMethod, proofToken: validated.token } : null);
@@ -93,7 +92,6 @@ export default function CheckoutPayment({ total, disabled, onChange }: { total: 
     <div className="checkout-transfer__send"><div><span>{matches ? 'Transfer shown in your screenshot' : 'Transfer now through InstaPay'}</span><strong>{egp(matches ? validated.amount : amountDue)}</strong><small>{plan === 'deposit' ? `Then ${egp(remainingAmount)} on delivery or pickup.` : 'Your full order total, including delivery.'}</small></div>
       <a href={INSTAPAY_LINK} target="_blank" rel="noopener noreferrer">Open InstaPay <ExternalLink size={16} aria-hidden="true" /></a>
     </div>
-    {roundedAmount > amountDue && <p className="checkout-transfer__privacy">You can round {egp(amountDue)} up to {egp(roundedAmount)}. Any extra deposit reduces your remaining balance.</p>}
     <div className="checkout-transfer__proof"><label htmlFor="payment-screenshot" className="checkout-transfer__upload"><ImagePlus size={22} strokeWidth={1.5} aria-hidden="true" /><span><strong>{screenshot ? 'Choose a different screenshot' : 'Attach your transaction screenshot'}</strong><small>Required · JPG, PNG or WebP · up to 12 MB</small></span></label>
       <input ref={fileInput} id="payment-screenshot" type="file" accept="image/jpeg,image/png,image/webp" disabled={disabled || scanning}
         onChange={event => { const file = event.target.files?.[0]; if (file) void scan(file); }} />
@@ -108,7 +106,6 @@ export default function CheckoutPayment({ total, disabled, onChange }: { total: 
         {error && <p className="checkout-transfer__error" role="alert">{error}</p>}
       </div>
       {screenshot && !matches && !scanning && <button type="button" className="checkout-transfer__retry" disabled={disabled} onClick={() => void scan(screenshot)}>Scan screenshot again</button>}
-      <p className="checkout-transfer__privacy">Google Gemini reads the amount in your screenshot. It is stored privately for bakery review. The bakery confirms the transfer in its account before preparing your order.</p>
     </div>
   </section>;
 }

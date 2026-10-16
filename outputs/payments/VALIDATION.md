@@ -39,3 +39,11 @@ Screenshots: `deposit-mobile.png`, `full-payment-mobile.png`, and the dialog sta
 - No live order, payment, stock reservation or customer email was created. Temporary bag selections and frontend receipt data were removed after verification. Physical-phone testing remains separate from these viewport checks.
 
 Gemini confidence is a model readability estimate, not bank verification. Staff still confirms actual funds received; edited screenshots cannot be authenticated by amount extraction.
+
+## EGP 5/10 rounding and shorter checkout copy — 17 October 2026
+
+- Removed the Google processing paragraph and rounding explanation from checkout, including the rounding sentence in amount-mismatch errors.
+- Shared validation now accepts exact amounts and ceilings to EGP 1, 5 or 10. A required EGP 192.50 deposit accepts EGP 195 or EGP 200, leaving EGP 190 or EGP 185 on an EGP 385 order. Underpayments and unrelated amounts still fail.
+- The server promotes an initially selected deposit to full InstaPay payment when its verified screenshot amount covers the server-priced full total. Saved balances are zero, actual submitted amounts are preserved and staff confirmation is still required. A full-payment selection with only a deposit cannot be accepted.
+- All 122 tests pass, including the shared policy, screenshot route, signed proof, order persistence and staff confirmation regressions. Targeted ESLint and production TypeScript checks pass.
+- The remaining synthetic browser receipt from the preceding verification was identified by image-pixel comparison and all three QA markers, then removed from private storage. No customer records were changed.

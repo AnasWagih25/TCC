@@ -11,11 +11,12 @@ const checkoutPayment = (amount = 125, plan = 'deposit', remainingMethod = 'cash
 };
 const expiredProofs = new Set();
 let proofChecks = 0;
-const load = loader({ './payment-proof': { verifyPaymentProof: (token, expectedAmount) => {
+const load = loader({ './payment-proof': { verifyPaymentProof: (token, expectedAmount, alternativeExpectedAmount) => {
   proofChecks++;
   const receipt = proofs.get(token);
   if (!receipt || expiredProofs.has(token)) throw new OrderError('Your payment screenshot check expired. Upload it again.');
-  if (!load('src/lib/payment-types.ts').amountMatchesPayment(receipt.detectedAmount, expectedAmount)) throw new OrderError('The payment amount does not match the amount due.');
+  const { amountMatchesPayment } = load('src/lib/payment-types.ts');
+  if (!amountMatchesPayment(receipt.detectedAmount, expectedAmount) && (alternativeExpectedAmount === undefined || !amountMatchesPayment(receipt.detectedAmount, alternativeExpectedAmount))) throw new OrderError('The payment amount does not match the amount due.');
   return receipt;
 } } });
 const { OrderError, validateCheckout, priceOrder } = load('src/lib/order-domain.ts');
@@ -73,12 +74,33 @@ test('rounded-up transfers persist the actual amount and subtract it from the re
     assert.equal(db.data.get('products/cake1').stock, 4);
   }
 });
-test('rounded deposits cannot be relabeled when the transfer actually covers the full tiny order', async () => {
+test('EGP 5 and 10 rounded deposits preserve actual payments and upgrade fully covered transfers', async () => {
+  for (const [requestedPlan, sent, savedPlan, balance] of [['deposit', 193, 'deposit', 192], ['deposit', 195, 'deposit', 190], ['deposit', 200, 'deposit', 185], ['deposit', 385, 'full', 0], ['deposit', 390, 'full', 0]]) {
+    const db = database(); db.data.get('products/cake1').price.mini = 385;
+    const request = validateCheckout(input({ items: [{ id: 'cake1', quantity: 1, selectedSize: 'Mini', price: 385 }], expectedTotal: 385, payment: checkoutPayment(sent, requestedPlan, 'cash') }));
+    const saved = await persistCheckout(db, request);
+    assert.equal(saved.payment.plan, savedPlan); assert.equal(saved.payment.amountSubmitted, sent); assert.equal(saved.payment.remainingAmount, balance);
+    assert.equal(saved.payment.remainingMethod, savedPlan === 'full' ? 'instapay' : 'cash');
+    assert.equal(saved.paymentMethod, savedPlan === 'full' ? 'instapay' : 'cash');
+    assert.equal(saved.paymentStatus, 'unpaid'); assert.equal(saved.payment.status, 'pending_review');
+    const recovered = await persistCheckout(db, request);
+    assert.equal(recovered.id, saved.id); assert.equal(db.data.get('products/cake1').stock, 4);
+  }
+});
+test('rounded deposit selections become full when their transfers cover a tiny order', async () => {
   const db = database(); db.data.get('products/cake1').price.mini = 0.99;
   const request = validateCheckout(input({ items: [{ id: 'cake1', quantity: 1, selectedSize: 'Mini', price: 0.99 }], expectedTotal: 0.99, payment: checkoutPayment(1, 'deposit') }));
-  await assert.rejects(persistCheckout(db, request), /selected payment option/);
-  assert.equal(db.data.get('products/cake1').stock, 5);
-  assert.equal([...db.data.keys()].filter(key => key.startsWith('orders/')).length, 0);
+  const saved = await persistCheckout(db, request);
+  assert.equal(saved.payment.plan, 'full'); assert.equal(saved.payment.remainingAmount, 0); assert.equal(saved.payment.remainingMethod, 'instapay');
+});
+test('a full payment selection with only a rounded deposit or excess payment creates no order', async () => {
+  for (const [plan, amount] of [['full', 195], ['deposit', 194], ['deposit', 400]]) {
+    const db = database(); db.data.get('products/cake1').price.mini = 385;
+    const request = validateCheckout(input({ items: [{ id: 'cake1', quantity: 1, selectedSize: 'Mini', price: 385 }], expectedTotal: 385, payment: checkoutPayment(amount, plan) }));
+    await assert.rejects(persistCheckout(db, request), /amount does not match|selected payment option/);
+    assert.equal(db.data.get('products/cake1').stock, 5);
+    assert.equal([...db.data.keys()].filter(key => /^(orders|paymentProofClaims|orderEmailJobs)\//.test(key)).length, 0);
+  }
 });
 test('missing screenshots, missing plans, Telda and invalid proof fields cannot enter checkout', () => {
   assert.throws(() => validateCheckout(input({ payment: undefined })), /50% InstaPay/);

@@ -44,14 +44,14 @@ function cents(value: number) {
   return Number.isSafeInteger(result) && Math.abs(value * 100 - result) < 0.0000001 ? result : null;
 }
 
-/** Optional rounding only ever increases the required transfer to its next whole pound. */
+/** Accept the exact transfer or its next EGP 1, EGP 5 or EGP 10 boundary. */
 export function amountMatchesPayment(received: number, required: number) {
   const receivedCents = cents(received), requiredCents = cents(required);
   return receivedCents !== null && requiredCents !== null && requiredCents > 0 &&
-    (receivedCents === requiredCents || receivedCents === Math.ceil(requiredCents / 100) * 100);
+    (receivedCents === requiredCents || [100, 500, 1000].some(step => receivedCents === Math.ceil(requiredCents / step) * step));
 }
 
-/** A transfer covering the full total always wins when tiny totals make both plans match. */
+/** A transfer covering the full total always wins when rounded payment plans overlap. */
 export function matchPaymentPlan(total: number, received: number): PaymentPlan | null {
   if (cents(total) === null || total <= 0) return null;
   if (amountMatchesPayment(received, total)) return 'full';

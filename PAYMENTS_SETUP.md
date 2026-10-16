@@ -4,7 +4,7 @@ Web checkout requires a screenshot for a 50% deposit or full payment to:
 
 https://ipn.eg/S/halamorshdy/instapay/5C7G4R
 
-The amount uses the final total, including delivery and discounts. Half-piastre deposits round up. Customers may send the exact required amount or round a decimal amount up to the next whole EGP (for example, EGP 30.88 → EGP 31). Underpayments and other overpayments do not match. Orders record the amount actually submitted and subtract it from the balance; a rounded full payment leaves zero to collect. Deposit balances can be paid by cash on delivery/pickup or InstaPay. Telda is disabled for new payments; historical records remain readable.
+The amount uses the final total, including delivery and discounts. Half-piastre deposits round up. Customers may send the exact required amount or round up to the next whole EGP, multiple of EGP 5, or multiple of EGP 10. For an EGP 192.50 deposit, EGP 193, EGP 195 and EGP 200 are accepted. Underpayments and other overpayments do not match. Orders record the amount actually submitted and subtract it from the balance. A transfer covering the full total is classified as full payment before checking the deposit option and leaves zero to collect. Deposit balances can be paid by cash on delivery/pickup or InstaPay. Telda is disabled for new payments; historical records remain readable.
 
 ## Screenshot checking
 
@@ -12,7 +12,7 @@ With `GEMINI_API_KEY` configured, the server sends the normalized screenshot inl
 
 The model does not receive the expected order amount. The server independently parses its verbatim transcription and checks the currency, transfer status, readability, amount bounds and agreement before matching the required deposit/full total. Ambiguous, unreadable, foreign-currency and incorrect amounts do not unlock checkout. The detected amount identifies deposit/full payment. Changing the total or payment option requires a matching scan. Gemini failures do not silently switch to a different scanner.
 
-If no Gemini key is configured, the existing bundled English/Arabic Tesseract scanner remains available for local development and deployments without an external provider. Live production is configured to use Gemini. Checkout discloses Google processing before screenshot upload.
+If no Gemini key is configured, the existing bundled English/Arabic Tesseract scanner remains available for local development and deployments without an external provider. Live production is configured to use Gemini.
 
 A signed, one-hour proof binds the private screenshot and amount. The server recalculates the order and checks the proof before committing the order, stock, email job and screenshot claim together. The same screenshot cannot fund another order. An identical saved order can still be recovered after the proof expires.
 

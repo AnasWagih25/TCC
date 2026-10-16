@@ -61,6 +61,20 @@ test('rounded-up screenshots select the correct plan while amounts between accep
   assert.equal(result.status, 200); assert.equal((await result.json()).plan, 'full');
 });
 
+test('receipt scans accept EGP 5 and 10 rounding and report full coverage as full payment', async () => {
+  for (const [amount, plan] of [[192.5, 'deposit'], [193, 'deposit'], [195, 'deposit'], [200, 'deposit'], [385, 'full'], [390, 'full']]) {
+    const { POST } = harness({ amount }), result = await POST(request({ total: 385 }));
+    const data = await result.json();
+    assert.equal(result.status, 200); assert.equal(data.plan, plan); assert.equal(data.receipt.detectedAmount, amount);
+  }
+  for (const amount of [192.49, 194, 196, 201, 400]) {
+    const { POST, calls } = harness({ amount }), result = await POST(request({ total: 385 }));
+    const data = await result.json();
+    assert.equal(result.status, 422); assert.equal(calls.saves.length, 0); assert.equal(calls.signatures.length, 0);
+    assert.doesNotMatch(data.error, /rounded|rounding|whole pound/i);
+  }
+});
+
 test('wrong amounts and unclear OCR never create a saved receipt or signed proof', async () => {
   for (const options of [{ amount: 500 }, { confidence: 44 }]) {
     const { POST, calls } = harness(options), result = await POST(request());

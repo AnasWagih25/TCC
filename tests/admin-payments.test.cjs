@@ -58,6 +58,15 @@ test('staff can confirm rounded-up deposits and full transfers with their actual
   }
 });
 
+test('staff confirmation supports EGP 5 and 10 rounded payments without inferring settlement from receipt scanning', async () => {
+  for (const [plan, amountSubmitted, remainingAmount, status] of [['deposit', 195, 190, 'unpaid'], ['deposit', 200, 185, 'unpaid'], ['full', 390, 0, 'paid']]) {
+    const db = new Database({ 'orders/ORD-test': { ...order, total: 385, payment: { ...payment, plan, amountSubmitted, remainingAmount, receipt: { ...receipt, detectedAmount: amountSubmitted } } } });
+    assert.equal((await paymentRoute(db).POST(request('verify_transfer'), context)).status, 200);
+    assert.equal(db.data.get('orders/ORD-test').paymentStatus, status);
+    assert.equal(db.data.get('orders/ORD-test').payment.remainingAmount, remainingAmount);
+  }
+});
+
 test('staff cannot confirm rounded transfers with a stale half balance or arbitrary excess payment', async () => {
   for (const [amountSubmitted, remainingAmount] of [[126, 125], [126.01, 124], [127, 123.01]]) {
     const db = new Database({ 'orders/ORD-test': { ...order, total: 250.01, payment: { ...payment, amountSubmitted, remainingAmount, receipt: { ...receipt, detectedAmount: amountSubmitted } } } });
