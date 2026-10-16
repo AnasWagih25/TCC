@@ -8,6 +8,8 @@ Staff use **Staff portal → Reviews** to inspect pending submissions, add genui
 
 ## Firebase configuration before production
 
+**Production status, 16 October 2026:** the previous deployed rules blocked review/category writes and anonymous photo uploads. The complete repaired rules in `firebase/firestore.rules` and `firebase/storage.rules` are now published. Fourteen live access checks passed, including public pending submissions/photos, staff hidden reviews/moderation/category CRUD, and denied public access to private orders/pending reviews. The actual browser photo-review form and staff add/edit/hide flows passed too. Temporary diagnostic reviews were never published and were removed after verification. Public and staff views now subscribe to changes automatically. The fragment-merging steps below are historical integration guidance; use the full reviewed rules when recreating this deployment.
+
 The app does not deploy or overwrite the project's existing Firebase permissions. Inspect the deployed rules, then merge the supplied Firestore and Storage fragments into the appropriate existing match blocks. Broad existing allow rules also apply and must not accidentally grant public moderation access. Do not replace the full ruleset with either fragment.
 
 1. Merge `firebase/reviews.firestore.rules` inside the existing `/databases/{database}/documents` match.

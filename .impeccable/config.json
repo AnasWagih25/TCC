@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-10-15T22:43:01.742Z",
         "reason": "Agent: DESIGN.md documents emailBody Arial as an intentional HTML email compatibility fallback; storefront and dashboard retain their brand fonts."
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "files": [
+          "src/app/api/send-contact-email/route.ts"
+        ],
+        "createdAt": "2026-10-16T09:10:54.131Z",
+        "reason": "Agent: DESIGN.md emailBody documents Arial as an intentional email-client compatibility fallback, now shared by contact and order notifications."
       }
     ]
   }

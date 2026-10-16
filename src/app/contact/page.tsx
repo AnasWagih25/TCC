@@ -20,9 +20,10 @@ export default function ContactPage() {
     setForm((current) => ({ ...current, [key]: value }));
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (status === 'sending') return;
     setStatus("sending");
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
+    const timer = setTimeout(() => controller.abort(), 35000);
     try {
       const response = await fetch("/api/send-contact-email", {
         method: "POST",
