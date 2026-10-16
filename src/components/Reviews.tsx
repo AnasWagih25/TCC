@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, Camera, MessageSquare, Star, X } from "lucide-react";
-import { CustomerReview, loadReviews } from "@/lib/reviews";
+import { CustomerReview, subscribeReviews } from "@/lib/reviews";
 import ReviewForm from "@/components/ReviewForm";
 
 export function ReviewCard({
@@ -103,23 +103,9 @@ export default function Reviews({ compact = false }: { compact?: boolean }) {
   } | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    let active = true;
-    loadReviews()
-      .then((items) => {
-        if (active) {
-          setReviews(items);
-          setError(false);
-        }
-      })
-      .catch(() => {
-        if (active) setError(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    return subscribeReviews(false, items => {
+      setReviews(items); setError(false); setLoading(false);
+    }, () => { setError(true); setLoading(false); });
   }, [retry]);
   useEffect(() => {
     if (lightbox) dialog.current?.showModal();

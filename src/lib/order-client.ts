@@ -38,7 +38,11 @@ export function createOrderSubmitter(storage: StoragePort | null, send: typeof f
     const timer = setTimeout(() => controller.abort(), 45000);
     try {
       const response = await send('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(prepared.request), signal: controller.signal });
-      const result = await response.json();
+      const result = await response.json().catch(() => {
+        throw new Error(response.status >= 500
+          ? 'The ordering service is temporarily unavailable. Your bag is safe. Please try again shortly.'
+          : 'The server returned an unreadable confirmation. Please try again.');
+      });
       if (!response.ok || !result.order) {
         if (result.definitive === true) {
           prepared = null;

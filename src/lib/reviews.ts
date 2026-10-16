@@ -3,6 +3,7 @@ import {
   doc,
   getDocs,
   limit,
+  onSnapshot,
   query,
   setDoc,
   where,
@@ -74,6 +75,27 @@ export async function loadReviews(staff = false): Promise<CustomerReview[]> {
   return snapshot.docs
     .map((item) => ({ ...item.data(), id: item.id }) as CustomerReview)
     .filter(isCustomerReview);
+}
+export function subscribeReviews(staff: boolean, onReviews: (reviews: CustomerReview[]) => void, onError: (error: unknown) => void) {
+  const request = staff
+    ? query(collection(db, 'reviews'), limit(200))
+    : query(collection(db, 'reviews'), where('status', '==', 'published'), limit(200));
+  const timer = setTimeout(() => onError(new Error('Reviews are taking too long to load. Please check your connection.')), 15000);
+  const unsubscribe = onSnapshot(request, snapshot => {
+    clearTimeout(timer);
+    onReviews(snapshot.docs.map(item => ({ ...item.data(), id: item.id })).filter(isCustomerReview));
+  }, error => { clearTimeout(timer); onError(error); });
+  return () => { clearTimeout(timer); unsubscribe(); };
+}
+export function reviewSaveFailure(error: unknown, prepared: boolean) {
+  const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
+  const definitive = ['permission-denied', 'unauthenticated', 'storage/unauthorized', 'storage/unauthenticated', 'invalid-argument'].includes(code);
+  const message = definitive
+    ? 'The server denied this save. Please contact the bakery so we can check review permissions. Your review has been kept here.'
+    : prepared
+      ? 'We couldn’t confirm the save. Your review may already be with us. Retry this same submission to avoid duplicates.'
+      : 'We couldn’t finish uploading your photos. Your words and photos are still here. Please try again.';
+  return { definitive, message };
 }
 export async function prepareReviewPhoto(file: File): Promise<File> {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type))

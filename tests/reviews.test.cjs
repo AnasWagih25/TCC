@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 
 function harness(options = {}) {
-  const calls = { queries: [], writes: [], uploads: [] };
+  const calls = { queries: [], writes: [], uploads: [], listeners: [] };
   const firestore = {
     collection: (_, name) => name,
     doc: (_, name, id) => `${name}/${id}`,
@@ -13,6 +13,7 @@ function harness(options = {}) {
     where: (...args) => ({ where: args }), limit: value => ({ limit: value }),
     getDocs: async () => ({ docs: (options.documents || []).map(value => ({ id: value.id, data: () => value })) }),
     setDoc: async (...args) => { if (options.writeError) throw new Error('Permission denied'); calls.writes.push(args); },
+    onSnapshot: (query, next, error) => { const listener = { query, next, error, closed: false }; calls.listeners.push(listener); return () => { listener.closed = true; }; },
   };
   const storage = {
     ref: (_, path) => path,
@@ -77,4 +78,26 @@ test('ambiguous writes retain an identical prepared retry without uploading phot
   await retry.saveReview(prepared, []);
   assert.equal(retry.calls.uploads.length, 0);
   assert.equal(JSON.stringify(retry.calls.writes[0][1]), JSON.stringify(prepared));
+});
+
+test('review permission failures unlock edits while ambiguous failures retain safe identical retries', () => {
+  const api = harness();
+  for (const code of ['permission-denied', 'storage/unauthorized', 'unauthenticated']) {
+    const failure = api.reviewSaveFailure({ code }, true);
+    assert.equal(failure.definitive, true);
+    assert.match(failure.message, /permissions/);
+  }
+  assert.equal(api.reviewSaveFailure(new Error('Network lost'), true).definitive, false);
+  assert.match(api.reviewSaveFailure(new Error('Network lost'), true).message, /same submission/);
+});
+
+test('review subscriptions receive new submissions, recover after errors and clean up listeners', () => {
+  const api = harness(); const batches = [], errors = [];
+  const stop = api.subscribeReviews(true, values => batches.push(values), error => errors.push(error));
+  const listener = api.calls.listeners[0];
+  listener.error(new Error('Temporary connection failure'));
+  listener.next({ docs: [{ id: review.id, data: () => review }] });
+  listener.next({ docs: [{ id: review.id, data: () => ({ ...review, status: 'hidden' }) }] });
+  assert.equal(errors.length, 1); assert.equal(batches.length, 2);
+  assert.equal(batches[1][0].status, 'hidden'); stop(); assert.equal(listener.closed, true);
 });

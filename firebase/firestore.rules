@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function staff() { return request.auth != null && request.auth.token.admin == true; }
+    match /products/{id} { allow read: if true; allow write: if staff(); }
+    match /categories/{id} { allow read: if true; allow write: if staff(); }
+    match /settings/{id} { allow read: if true; allow write: if staff(); }
+    // Merge these blocks INSIDE the existing match /databases/{database}/documents.
+// Keep the existing catalog, settings and order rules. See REVIEWS_SETUP.md.
+function reviewStaff() {
+  return request.auth != null && request.auth.token.admin == true;
+}
+match /reviews/{reviewId} {
+  function validReview() {
+    let d = request.resource.data;
+    return d.keys().hasOnly(['id', 'name', 'rating', 'title', 'body', 'product', 'photos', 'status', 'createdAt', 'source'])
+      && d.id == reviewId
+      && d.name is string && d.name.size() >= 1 && d.name.size() <= 60
+      && d.title is string && d.title.size() >= 1 && d.title.size() <= 100
+      && d.body is string && d.body.size() >= 10 && d.body.size() <= 2000
+      && d.product is string && d.product.size() <= 200
+      && d.rating is int && d.rating >= 1 && d.rating <= 5
+      && d.photos is list && d.photos.size() <= 3
+      && (d.photos.size() < 1 || d.photos[0].matches('https://firebasestorage.googleapis.com/.*'))
+      && (d.photos.size() < 2 || d.photos[1].matches('https://firebasestorage.googleapis.com/.*'))
+      && (d.photos.size() < 3 || d.photos[2].matches('https://firebasestorage.googleapis.com/.*'))
+      && d.createdAt is string && d.createdAt.size() <= 40
+      && d.status in ['pending', 'published', 'hidden']
+      && d.source in ['customer', 'staff'];
+  }
+  allow read: if resource.data.status == 'published' || reviewStaff();
+  allow create: if validReview() && ((request.resource.data.status == 'pending' && request.resource.data.source == 'customer') || reviewStaff());
+  // A public retry may only repeat exactly the same pending document.
+  // No public field, image, visibility or moderation change is permitted.
+  allow update: if validReview() && (reviewStaff()
+    || (resource.data.status == 'pending'
+      && resource.data.source == 'customer'
+      && request.resource.data == resource.data));
+  // Hide rather than permanently delete reviews in the staff portal.
+  allow delete: if false;
+}
+
+    // Merge INSIDE match /databases/{database}/documents and remove any broader
+// orders/product/settings rules that grant the same paths public write access.
+function orderStaff() {
+  return request.auth != null && request.auth.token.admin == true;
+}
+match /orders/{orderId} {
+  allow read: if orderStaff();
+  // Trusted server transactions create orders and reserve stock.
+  allow create, delete: if false;
+  allow update: if orderStaff()
+    && request.resource.data.diff(resource.data).affectedKeys()
+      .hasOnly(['status', 'paymentStatus', 'archived', 'updatedAt', 'updatedBy'])
+    && request.resource.data.status in ['pending', 'fulfilled']
+    && (!('paymentStatus' in request.resource.data) || request.resource.data.paymentStatus in ['paid', 'unpaid'])
+    && (!('archived' in request.resource.data) || request.resource.data.archived is bool)
+    && request.resource.data.updatedBy == request.auth.uid;
+}
+match /orderEmailJobs/{jobId} {
+  allow read, write: if false;
+}
+
+  }
+}

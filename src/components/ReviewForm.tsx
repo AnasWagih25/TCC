@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ArrowUpRight, Camera, CheckCircle2, Star, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { CustomerReview, prepareReviewPhoto, saveReview } from "@/lib/reviews";
+import { CustomerReview, prepareReviewPhoto, saveReview, reviewSaveFailure } from "@/lib/reviews";
 
 type Props = {
   initial?: CustomerReview;
@@ -111,12 +111,13 @@ export default function ReviewForm({
       );
       setSaved(true);
       onSaved?.();
-    } catch {
-      setError(
-        attemptedReview
-          ? "We couldn’t confirm the save. Your review may already be with us. Your content is locked so you can retry the same submission without adding duplicate photos. If this continues, contact our team."
-          : "We couldn’t upload your photos. Your words and photos are still here. Please check your connection and try again.",
-      );
+    } catch (error) {
+      const failure = reviewSaveFailure(error, attemptedReview !== null);
+      if (failure.definitive) {
+        setPreparedReview(null);
+        if (attemptedReview) { setPhotos(attemptedReview.photos); setFiles([]); }
+      }
+      setError(failure.message);
     } finally {
       setBusy(false);
     }
@@ -156,6 +157,7 @@ export default function ReviewForm({
             className="icon-button"
             onClick={onCancel}
             aria-label="Close review form"
+            disabled={busy || preparing}
           >
             <X size={20} />
           </button>

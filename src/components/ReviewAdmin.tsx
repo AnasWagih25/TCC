@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { CustomerReview, loadReviews, withDeadline } from "@/lib/reviews";
+import { CustomerReview, subscribeReviews, withDeadline } from "@/lib/reviews";
 import ReviewForm from "./ReviewForm";
 import { ReviewCard } from "./Reviews";
 
@@ -15,30 +15,18 @@ export default function ReviewAdmin() {
   const [editing, setEditing] = useState<CustomerReview | "new" | null>(null);
   const [busy, setBusy] = useState("");
   useEffect(() => {
-    let active = true;
-    loadReviews(true)
-      .then((items) => {
-        if (active) {
+    return subscribeReviews(true, items => {
           setReviews(
             items.sort(
               (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
             ),
           );
-          setError("");
-        }
-      })
-      .catch(() => {
-        if (active)
+          setError(""); setLoading(false);
+      }, () => {
           setError(
             "Reviews could not be loaded. Check your connection and staff access to the reviews collection.",
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+          ); setLoading(false);
       });
-    return () => {
-      active = false;
-    };
   }, [version]);
   const changeStatus = async (
     review: CustomerReview,

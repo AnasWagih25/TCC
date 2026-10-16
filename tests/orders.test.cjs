@@ -80,3 +80,13 @@ test('definitive server rejection allows the customer to correct an order', asyn
   const { requestId, receiptToken, ...details } = input();
   await assert.rejects(submit(details), /Out of stock/); await submit({ ...details, paymentMethod: 'instapay' }); assert.notEqual(bodies[0].requestId, bodies[1].requestId);
 });
+
+test('an empty production 500 response preserves recovery and shows a useful service error', async () => {
+  const { createOrderSubmitter } = load('src/lib/order-client.ts');
+  const stored = new Map();
+  const storage = { getItem: key => stored.get(key), setItem: (key, value) => stored.set(key, value), removeItem: key => stored.delete(key) };
+  const submit = createOrderSubmitter(storage, async () => new Response(null, { status: 500 }));
+  const { requestId, receiptToken, ...details } = input();
+  await assert.rejects(submit(details), /ordering service is temporarily unavailable.*Reference: ORD-/);
+  assert.equal(stored.size, 1);
+});

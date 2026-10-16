@@ -211,6 +211,7 @@ export default function CheckoutMap({ onLocationSelect, staticLocation, isStatic
               {results.map((r, idx) => (
                 <button
                   key={idx}
+                  type="button"
                   onClick={() => handleSelectResult(r)}
                   style={{
                     display: 'flex',

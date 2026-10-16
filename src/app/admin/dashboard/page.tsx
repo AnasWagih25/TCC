@@ -32,6 +32,20 @@ export default function AdminDashboard() {
   const [health, setHealth] = useState('Checking server ordering…');
   const [healthy, setHealthy] = useState(false);
   const { busy, notice, perform } = useAdminAction();
+  useEffect(() => {
+    if (!user || !isAdmin) return;
+    const controller = new AbortController();
+    const retryDueEmails = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        await fetch('/api/admin/order-emails', { method: 'POST', headers: { Authorization: `Bearer ${await user.getIdToken()}` }, signal: controller.signal });
+      } catch { /* Durable jobs and visible per-order retry remain available. */ }
+    };
+    void retryDueEmails();
+    const timer = setInterval(retryDueEmails, 60000);
+    document.addEventListener('visibilitychange', retryDueEmails);
+    return () => { controller.abort(); clearInterval(timer); document.removeEventListener('visibilitychange', retryDueEmails); };
+  }, [user, isAdmin]);
   useEffect(() => { if (!loading && (!user || !isAdmin)) router.replace('/admin/login'); }, [user, isAdmin, loading, router]);
   useEffect(() => {
     if (!user || !isAdmin) return;
