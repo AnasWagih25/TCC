@@ -22,4 +22,4 @@ Product details and box building now use scoped storefront styles and native dia
 
 Screenshots: `product-desktop.png`, `box-mobile.png`, `box-mobile-dark.png`.
 
-Browser viewport checks do not replace physical iPhone/Android testing. Real keyboard and safe-area behavior still need a hardware check; the dialogs use safe-area offsets, dynamic viewport sizing and the visual viewport resize events to accommodate them. Reduced-motion behavior is implemented in CSS.
+Browser viewport checks do not replace physical iPhone/Android testing. Real keyboard and safe-area behavior still need a hardware check; the dialogs use safe-area offsets and dynamic viewport sizing. An additional stabilization pass removed imperative viewport resize writes and dialog transforms; repeated clicks now preserve frame dimensions. Reduced-motion behavior is implemented in CSS.

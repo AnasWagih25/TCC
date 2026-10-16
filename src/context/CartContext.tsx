@@ -9,6 +9,7 @@ import { reconcileProductEdit } from '@/lib/catalog-edit';
 import { createOrderSubmitter, pendingCheckout, remainingCart } from '@/lib/order-client';
 import { money, type CustomerInfo } from '@/lib/order-domain';
 import { defaultPickupSettings, resolvePickupSettings, type PickupSettings } from '@/lib/pickup';
+import type { CheckoutPayment, OrderPayment } from '@/lib/payment-types';
 export { defaultPickupSettings, type PickupSettings } from '@/lib/pickup';
 
 export type Category = {
@@ -120,6 +121,7 @@ export type Order = {
   promoCode?: string;
   paymentMethod?: 'cash' | 'instapay' | 'telda';
   paymentStatus?: 'unpaid' | 'paid';
+  payment?: OrderPayment;
   pickupSnapshot?: PickupSettings;
   email?: { status: 'pending' | 'sending' | 'sent' | 'failed'; attempts?: number; lastError?: string; sentAt?: string; messageId?: string };
   status: 'pending' | 'fulfilled';
@@ -141,7 +143,7 @@ type CartContextType = {
   addBoxToCart: (productId: string, boxSize: number, selections: BoxFlavorSelection[], selectedCustomizations?: { name: string; price: number; text?: string }[]) => { success: boolean; message: string };
   updateQuantity: (index: number, change: number) => { success: boolean; message: string };
   removeFromCart: (index: number) => void;
-  placeOrder: (customerInfo: CustomerInfo, deliveryFee?: number, discount?: number, deliveryMethod?: 'delivery' | 'pickup', promoCode?: string, paymentMethod?: 'cash' | 'instapay' | 'telda') => Promise<Order>;
+  placeOrder: (customerInfo: CustomerInfo, deliveryFee?: number, discount?: number, deliveryMethod?: 'delivery' | 'pickup', promoCode?: string, paymentMethod?: 'cash' | 'instapay', payment?: CheckoutPayment) => Promise<Order>;
   updateProduct: (product: Product, original?: Pick<Product, 'stock' | 'updatedAt'>) => Promise<void>;
   deleteProduct: (index: number) => Promise<void>;
   updateHeroImage: (url: string, animated?: boolean) => Promise<void>;
@@ -379,8 +381,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const submitOrderRef = useRef<ReturnType<typeof createOrderSubmitter> | null>(null);
-  const placeOrder = async (customerInfo: CustomerInfo, deliveryFee = 70, discount = 0, deliveryMethod: 'delivery' | 'pickup' = 'delivery', promoCode = '', paymentMethod: 'cash' | 'instapay' | 'telda' = 'cash') => {
+  const placeOrder = async (customerInfo: CustomerInfo, deliveryFee = 70, discount = 0, deliveryMethod: 'delivery' | 'pickup' = 'delivery', promoCode = '', paymentMethod: 'cash' | 'instapay' = 'cash', payment?: CheckoutPayment) => {
     if (!cart.length) throw new Error('Your bag is empty.');
+    if (!payment?.proofToken) throw new Error('Upload and check your InstaPay payment screenshot before placing your order.');
     if (!submitOrderRef.current) {
       let storage: Storage | null = null;
       try { storage = sessionStorage; } catch { /* The active tab can still submit. */ }
@@ -388,7 +391,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     const expectedTotal = money(money(cart.reduce((sum, item) => sum + item.price * item.quantity, 0)) + (deliveryMethod === 'pickup' ? 0 : deliveryFee) - money(discount));
     const order = await submitOrderRef.current({
-      customer: customerInfo, deliveryMethod, paymentMethod, promoCode, expectedTotal,
+      customer: customerInfo, deliveryMethod, paymentMethod, payment, promoCode, expectedTotal,
       items: cart.map(item => ({ id: item.id, quantity: item.quantity, selectedSize: item.selectedSize, price: item.price, ...(item.selectedFlavor ? { selectedFlavor: item.selectedFlavor } : {}), ...(item.boxSize ? { boxSize: item.boxSize, boxFlavors: item.boxFlavors } : {}), selectedCustomizations: item.selectedCustomizations || [] })),
     });
     setOrders(current => [order, ...current.filter(item => item.id !== order.id)]);

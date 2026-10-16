@@ -1,6 +1,7 @@
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 
 export function serverFirebaseConfigured() {
   return Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIRESTORE_EMULATOR_HOST);
@@ -13,12 +14,14 @@ function adminApp() {
   const account = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
   return initializeApp({
     projectId: process.env.FIREBASE_PROJECT_ID || 'thecc-1e732',
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'thecc-1e732.firebasestorage.app',
     credential: account ? cert(JSON.parse(account)) : applicationDefault(),
   }, 'tcc-server');
 }
 
 export const adminDatabase = () => getFirestore(adminApp());
 export const adminAuth = () => getAuth(adminApp());
+export const adminStorage = () => getStorage(adminApp()).bucket();
 
 export async function requireAdmin(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer /, '');

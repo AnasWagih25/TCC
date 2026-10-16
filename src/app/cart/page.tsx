@@ -152,7 +152,7 @@ export default function Cart() {
                 </span>
               </Link>
               <p className="cart-payment-note">
-                Cash on delivery / pickup, Instapay or Telda.
+                A 50% Instapay deposit and payment screenshot are required. Pay the balance by Instapay or cash on delivery / pickup, or pay in full now with Instapay.
               </p>
             </aside>
           </div>

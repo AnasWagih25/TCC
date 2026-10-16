@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const body = await request.text();
     if (body.length > 10000) throw new OrderError('Sale details are too large.');
     const data = JSON.parse(body);
-    if (!/^[a-f0-9-]{36}$/i.test(data.requestId) || !/^[\w-]{1,120}$/.test(data.productId) || typeof data.customerName !== 'string' || !data.customerName.trim() || data.customerName.length > 100 || !Number.isInteger(data.quantity) || data.quantity < 1 || data.quantity > 100 || !Number.isFinite(data.total) || data.total <= 0 || data.total > 1000000 || !['cash', 'instapay', 'telda'].includes(data.paymentMethod) || !['paid', 'unpaid'].includes(data.paymentStatus) || !['fulfilled', 'pending'].includes(data.status)) throw new OrderError('Check the manual sale details.');
+    if (!/^[a-f0-9-]{36}$/i.test(data.requestId) || !/^[\w-]{1,120}$/.test(data.productId) || typeof data.customerName !== 'string' || !data.customerName.trim() || data.customerName.length > 100 || !Number.isInteger(data.quantity) || data.quantity < 1 || data.quantity > 100 || !Number.isFinite(data.total) || data.total <= 0 || data.total > 1000000 || !['cash', 'instapay'].includes(data.paymentMethod) || !['paid', 'unpaid'].includes(data.paymentStatus) || !['fulfilled', 'pending'].includes(data.status)) throw new OrderError('Check the manual sale details.');
     for (const [field, max] of [['phone', 30], ['email', 254], ['notes', 2000]] as const) if (typeof data[field] !== 'string' || data[field].length > max) throw new OrderError(`Check ${field}.`);
     const id = `MAN-${data.requestId}`;
     const db = adminDatabase();

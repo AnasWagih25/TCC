@@ -20,26 +20,20 @@ function MenuDialog({ title, eyebrow, children, footer, onClose, box = false }: 
     const dialog = ref.current;
     const previous = document.activeElement as HTMLElement | null;
     const overflow = document.body.style.overflow;
-    const viewport = window.visualViewport;
-    const fitViewport = () => {
-      if (!dialog || !viewport || viewport.scale !== 1) return;
-      dialog.style.setProperty('--menu-viewport-height', `${viewport.height}px`);
-      dialog.style.setProperty('--menu-viewport-top', `${viewport.offsetTop}px`);
-      dialog.style.setProperty('--menu-viewport-bottom', `${Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)}px`);
-    };
-    fitViewport();
-    viewport?.addEventListener('resize', fitViewport);
-    viewport?.addEventListener('scroll', fitViewport);
     dialog?.showModal();
     document.body.style.overflow = 'hidden';
     return () => {
       dialog?.close();
-      viewport?.removeEventListener('resize', fitViewport);
-      viewport?.removeEventListener('scroll', fitViewport);
       document.body.style.overflow = overflow;
       previous?.focus({ preventScroll: true });
     };
   }, []);
+
+  function isBackdrop(event: { target: EventTarget; currentTarget: HTMLDialogElement; clientX: number; clientY: number }) {
+    if (event.target !== event.currentTarget) return false;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    return event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
+  }
 
   return <dialog ref={ref} className={`menu-dialog${box ? ' menu-dialog--box' : ''}`} aria-labelledby={titleId}
     onCancel={event => { event.preventDefault(); onClose(); }}
@@ -53,8 +47,9 @@ function MenuDialog({ title, eyebrow, children, footer, onClose, box = false }: 
         target?.focus();
       }
     }}
-    onPointerDown={event => { outside.current = event.target === event.currentTarget; }}
-    onClick={event => { if (outside.current && event.target === event.currentTarget) onClose(); }}>
+    onPointerDown={event => { outside.current = isBackdrop(event); }}
+    onPointerCancel={() => { outside.current = false; }}
+    onClick={event => { if (outside.current && isBackdrop(event)) onClose(); outside.current = false; }}>
     <header className="menu-dialog__header">
       <div><p className="menu-dialog__eyebrow">{eyebrow}</p><h2 id={titleId}>{title}</h2></div>
       <button type="button" className="menu-dialog__close" aria-label="Close dialog" onClick={onClose} autoFocus><X size={20} /></button>

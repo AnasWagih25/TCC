@@ -1,5 +1,6 @@
 import type { CartItem, Category, Order, Product, PromoCode } from '@/context/CartContext';
 import type { PickupSettings } from './pickup';
+import type { CheckoutPayment } from './payment-types';
 
 export class OrderError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -12,7 +13,8 @@ export type CheckoutRequest = {
   customer: CustomerInfo;
   items: OrderSelection[];
   deliveryMethod: 'delivery' | 'pickup';
-  paymentMethod: 'cash' | 'instapay' | 'telda';
+  paymentMethod: 'cash' | 'instapay';
+  payment: CheckoutPayment;
   promoCode: string;
   expectedTotal: number;
 };
@@ -30,7 +32,12 @@ export function validateCheckout(value: unknown): CheckoutRequest {
   if (!value || typeof value !== 'object') throw new OrderError('Invalid order request.');
   const data = value as CheckoutRequest;
   if (!/^[a-f0-9-]{36}$/i.test(data.requestId || '') || !/^[a-f0-9-]{36}$/i.test(data.receiptToken || '')) throw new OrderError('Invalid order reference.');
-  if (!['delivery', 'pickup'].includes(data.deliveryMethod) || !['cash', 'instapay', 'telda'].includes(data.paymentMethod)) throw new OrderError('Choose delivery and payment options.');
+  if (!['delivery', 'pickup'].includes(data.deliveryMethod)) throw new OrderError('Choose a delivery option.');
+  const payment = data.payment;
+  if (!payment || typeof payment !== 'object' || Array.isArray(payment) || !['deposit', 'full'].includes(payment.plan) || !['cash', 'instapay'].includes(payment.remainingMethod)) throw new OrderError('Choose a 50% InstaPay deposit or full InstaPay payment.');
+  if (typeof payment.proofToken !== 'string' || !payment.proofToken.trim() || payment.proofToken.length > 8192) throw new OrderError('Upload and check your InstaPay payment screenshot before placing your order.');
+  if (data.paymentMethod !== undefined && !['cash', 'instapay'].includes(data.paymentMethod)) throw new OrderError('Choose cash or InstaPay for your remaining balance.');
+  const remainingMethod = payment.plan === 'full' ? 'instapay' : payment.remainingMethod;
   if (!Array.isArray(data.items) || data.items.length < 1 || data.items.length > 40) throw new OrderError('Your bag must contain between 1 and 40 selections.');
   for (const item of data.items) {
     if (!item || typeof item.id !== 'string' || !/^[\w-]{1,120}$/.test(item.id)) throw new OrderError('Invalid product.');
@@ -53,7 +60,7 @@ export function validateCheckout(value: unknown): CheckoutRequest {
     if (!pin || !validNumber(pin.lat) || !validNumber(pin.lng) || Math.abs(pin.lat) > 90 || Math.abs(pin.lng) > 180) throw new OrderError('Pin your delivery address on the map.');
   }
   if (!validNumber(data.expectedTotal) || data.expectedTotal < 0) throw new OrderError('Invalid order total.');
-  return { ...data, customer: { name, phone, email, notes, address, ...(customer.location ? { location: customer.location } : {}) }, promoCode: text(data.promoCode ?? '', 'your promo code', 60, false).toUpperCase() };
+  return { ...data, paymentMethod: remainingMethod, payment: { plan: payment.plan, remainingMethod, proofToken: payment.proofToken }, customer: { name, phone, email, notes, address, ...(customer.location ? { location: customer.location } : {}) }, promoCode: text(data.promoCode ?? '', 'your promo code', 60, false).toUpperCase() };
 }
 
 export function deliveryPrice(location: {lat: number; lng: number}, origin: {lat: number; lng: number}) {

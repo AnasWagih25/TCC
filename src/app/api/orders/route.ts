@@ -1,7 +1,7 @@
 import { after, NextResponse } from 'next/server';
 import { adminDatabase, serverFirebaseConfigured } from '@/lib/firebase-admin';
 import { OrderError, validateCheckout } from '@/lib/order-domain';
-import { persistCheckout } from '@/lib/order-store';
+import { persistCheckout, recoverLegacyCheckout } from '@/lib/order-store';
 import { sendOrderNotification } from '@/lib/order-notifications';
 
 export const runtime = 'nodejs';
@@ -11,7 +11,12 @@ export async function POST(request: Request) {
   try {
     const body = await request.text();
     if (body.length > 64000) return NextResponse.json({ error: 'Order is too large.', definitive: true }, { status: 413 });
-    const input = validateCheckout(JSON.parse(body));
+    const data = JSON.parse(body);
+    if (data && typeof data === 'object' && !Array.isArray(data) && !Object.hasOwn(data, 'payment')) {
+      const recovered = await recoverLegacyCheckout(adminDatabase(), data);
+      if (recovered) return NextResponse.json({ order: recovered }, { status: 200, headers: { 'Cache-Control': 'no-store' } });
+    }
+    const input = validateCheckout(data);
     const db = adminDatabase();
     const order = await persistCheckout(db, input);
     after(async () => { try { await sendOrderNotification(db, order.id); } catch (error) { console.error('Order notification remains queued:', error instanceof Error ? error.message : 'Unknown failure'); } });

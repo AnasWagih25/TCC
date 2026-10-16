@@ -1,16 +1,30 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { randomUUID } = require('node:crypto');
+const { randomUUID, createHash } = require('node:crypto');
 const { loader } = require('./helpers/load-ts.cjs');
 const { Database } = require('./helpers/firestore.cjs');
-const load = loader();
-const { validateCheckout, priceOrder } = load('src/lib/order-domain.ts');
-const { persistCheckout } = load('src/lib/order-store.ts');
+const proofs = new Map();
+const checkoutPayment = (amount = 125, plan = 'deposit', remainingMethod = 'cash') => {
+  const proofToken = randomUUID();
+  proofs.set(proofToken, { id: randomUUID(), path: `payment-proofs/${proofToken}.png`, sha256: createHash('sha256').update(proofToken).digest('hex'), detectedAmount: amount, confidence: 95, uploadedAt: new Date().toISOString() });
+  return { plan, remainingMethod, proofToken };
+};
+const expiredProofs = new Set();
+let proofChecks = 0;
+const load = loader({ './payment-proof': { verifyPaymentProof: (token, expectedAmount) => {
+  proofChecks++;
+  const receipt = proofs.get(token);
+  if (!receipt || expiredProofs.has(token)) throw new OrderError('Your payment screenshot check expired. Upload it again.');
+  if (receipt.detectedAmount !== expectedAmount) throw new OrderError('The payment amount does not match the amount due.');
+  return receipt;
+} } });
+const { OrderError, validateCheckout, priceOrder } = load('src/lib/order-domain.ts');
+const { digest, persistCheckout, recoverLegacyCheckout } = load('src/lib/order-store.ts');
 const { defaultPickupSettings: pickup } = load('src/lib/pickup.ts');
 const categories = [{ id: 'cake', sizeType: 'normal_mini', isBoxBuilder: false }, { id: 'box', isBoxBuilder: true }];
 const cake = { id: 'cake1', name: 'Chocolate cake', description: 'Cookie cake', image: '/cake.jpg', type: 'cake', stock: 5, price: { normal: 400, mini: 250 }, customizations: [{ name: 'Message', price: 20, requiresText: true, pricing: { Mini: 10 } }] };
 const box = { id: 'box1', name: 'Cookie box', type: 'box', stock: 4, price: { normal: 0, mini: 0 }, flavors: [{ name: 'Milk', price: 0 }, { name: 'Kinder', price: 5 }], boxPricing: [{ size: 6, price: 270 }], customizations: [] };
-const input = overrides => ({ requestId: randomUUID(), receiptToken: randomUUID(), customer: { name: 'Test customer', phone: '01000000000', email: 'test@example.com', address: 'Pickup', notes: '' }, items: [{ id: 'cake1', quantity: 1, selectedSize: 'Mini', price: 250, selectedCustomizations: [] }], deliveryMethod: 'pickup', paymentMethod: 'cash', promoCode: '', expectedTotal: 250, ...overrides });
+const input = overrides => ({ requestId: randomUUID(), receiptToken: randomUUID(), customer: { name: 'Test customer', phone: '01000000000', email: 'test@example.com', address: 'Pickup', notes: '' }, items: [{ id: 'cake1', quantity: 1, selectedSize: 'Mini', price: 250, selectedCustomizations: [] }], deliveryMethod: 'pickup', paymentMethod: 'cash', payment: checkoutPayment(), promoCode: '', expectedTotal: 250, ...overrides });
 const database = () => new Database({ 'products/cake1': cake, 'products/box1': box, 'categories/cake': categories[0], 'categories/box': categories[1], 'settings/pickup': pickup });
 
 test('order, aggregated inventory reservation, and email job commit together', async () => {
@@ -19,6 +33,8 @@ test('order, aggregated inventory reservation, and email job commit together', a
   assert.equal(order.customer.address, `Pickup (${pickup.address})`);
   assert.equal(order.customer.location.lat, pickup.lat);
   assert.equal(order.total, 250); assert.equal(order.deliveryFee, 0);
+  assert.equal(order.payment.amountSubmitted, 125); assert.equal(order.payment.remainingAmount, 125);
+  assert.equal(order.payment.status, 'pending_review'); assert.equal(order.paymentStatus, 'unpaid');
   assert.equal(db.data.get('products/cake1').stock, 4);
   assert.equal(db.data.get(`orderEmailJobs/${order.id}`).state, 'pending');
   assert.ok(db.data.get(`orders/${order.id}`).receiptHash);
@@ -30,11 +46,58 @@ test('repeated concurrent requests reserve stock once and return one order', asy
   assert.equal(first.id, second.id); assert.equal(db.data.get('products/cake1').stock, 4);
   assert.equal([...db.data.keys()].filter(key => key.startsWith('orders/')).length, 1);
 });
+test('deposit calculations round up cents and include the server-priced final delivery and discount total', async () => {
+  const { paymentAmounts } = load('src/lib/payment-types.ts');
+  assert.equal(paymentAmounts(250.01, 'deposit').amountDue, 125.01);
+  assert.equal(paymentAmounts(250.01, 'deposit').remainingAmount, 125);
+  const db = database();
+  const request = validateCheckout(input({ deliveryMethod: 'delivery', customer: { name: 'Test', phone: '01000000000', email: 'test@example.com', address: 'Near bakery', location: { lat: pickup.lat, lng: pickup.lng } }, promoCode: 'QUIRK', expectedTotal: 307.5, payment: checkoutPayment(153.75, 'deposit', 'instapay') }));
+  const order = await persistCheckout(db, request);
+  assert.equal(order.payment.amountSubmitted, 153.75); assert.equal(order.payment.remainingAmount, 153.75);
+  assert.equal(order.paymentMethod, 'instapay'); assert.equal(order.payment.remainingMethod, 'instapay');
+});
+test('full InstaPay payment leaves no balance and waits for staff confirmation', async () => {
+  const order = await persistCheckout(database(), validateCheckout(input({ payment: checkoutPayment(250, 'full', 'cash') })));
+  assert.equal(order.payment.plan, 'full'); assert.equal(order.payment.amountSubmitted, 250);
+  assert.equal(order.payment.remainingAmount, 0); assert.equal(order.payment.remainingMethod, 'instapay');
+  assert.equal(order.paymentMethod, 'instapay'); assert.equal(order.paymentStatus, 'unpaid');
+});
+test('missing screenshots, missing plans, Telda and invalid proof fields cannot enter checkout', () => {
+  assert.throws(() => validateCheckout(input({ payment: undefined })), /50% InstaPay/);
+  assert.throws(() => validateCheckout(input({ payment: { plan: 'deposit', remainingMethod: 'cash', proofToken: '' } })), /screenshot/);
+  assert.throws(() => validateCheckout(input({ payment: { plan: 'deposit', remainingMethod: 'telda', proofToken: 'token' } })), /50% InstaPay/);
+  assert.throws(() => validateCheckout(input({ paymentMethod: 'telda' })), /remaining balance/);
+});
+test('invalid or incorrect payment proof saves no order, email job, receipt claim or inventory change', async () => {
+  for (const payment of [{ plan: 'deposit', remainingMethod: 'cash', proofToken: 'unsigned' }, checkoutPayment(1)]) {
+    const db = database();
+    await assert.rejects(persistCheckout(db, validateCheckout(input({ payment }))), /screenshot check expired|amount does not match/);
+    assert.equal(db.data.get('products/cake1').stock, 5);
+    assert.equal([...db.data.keys()].filter(key => /^(orders|orderEmailJobs|paymentProofClaims)\//.test(key)).length, 0);
+  }
+});
+test('saved identical submissions recover after proof expiry without checking or reusing stock again', async () => {
+  const db = database(), request = validateCheckout(input());
+  const saved = await persistCheckout(db, request), count = proofChecks;
+  expiredProofs.add(request.payment.proofToken);
+  const recovered = await persistCheckout(db, request);
+  assert.equal(recovered.id, saved.id); assert.equal(proofChecks, count);
+  assert.equal(db.data.get('products/cake1').stock, 4);
+});
+test('one screenshot cannot fund two orders, even with separately checked tokens submitted concurrently', async () => {
+  const db = database(), payment = checkoutPayment(), secondPayment = checkoutPayment();
+  proofs.get(secondPayment.proofToken).sha256 = proofs.get(payment.proofToken).sha256;
+  const results = await Promise.allSettled([persistCheckout(db, validateCheckout(input({ payment }))), persistCheckout(db, validateCheckout(input({ payment: secondPayment })))]);
+  assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+  assert.match(results.find(result => result.status === 'rejected').reason.message, /already been submitted/);
+  assert.equal(db.data.get('products/cake1').stock, 4);
+});
 test('a failed database commit saves nothing and stock remains unchanged', async () => {
   const db = database(); db.failCommit = true;
   await assert.rejects(persistCheckout(db, validateCheckout(input())), /Database unavailable/);
   assert.equal(db.data.get('products/cake1').stock, 5);
   assert.equal([...db.data.keys()].filter(key => key.startsWith('orders/')).length, 0);
+  assert.equal([...db.data.keys()].filter(key => key.startsWith('paymentProofClaims/')).length, 0);
 });
 test('stock checks aggregate different sizes and prevent overselling', async () => {
   const db = database(); db.data.get('products/cake1').stock = 1;
@@ -89,4 +152,32 @@ test('an empty production 500 response preserves recovery and shows a useful ser
   const { requestId, receiptToken, ...details } = input();
   await assert.rejects(submit(details), /ordering service is temporarily unavailable.*Reference: ORD-/);
   assert.equal(stored.size, 1);
+});
+
+test('pre-deposit saved orders recover with their original private receipt without mutating stock or jobs', async () => {
+  const db = database(), legacy = input(); delete legacy.payment;
+  const id = `ORD-${legacy.requestId}`;
+  db.data.set(`orders/${id}`, { id, source: 'web', customer: legacy.customer, items: [{ id: 'cake1', quantity: 1 }], total: 250, status: 'pending', receiptHash: digest(legacy.receiptToken), requestHash: digest(JSON.stringify(legacy)) });
+  db.data.set(`orderEmailJobs/${id}`, { state: 'pending', attempts: 0 });
+  db.data.get('products/cake1').stock = 4;
+  const before = JSON.stringify([...db.data]);
+  const recovered = await recoverLegacyCheckout(db, legacy);
+  assert.equal(recovered.id, id); assert.equal(recovered.receiptHash, undefined); assert.equal(recovered.requestHash, undefined);
+  assert.equal(JSON.stringify([...db.data]), before);
+});
+
+test('legacy recovery rejects guessed references, wrong capabilities, modern orders and explicit empty payment fields', async () => {
+  const db = database(), legacy = input(); delete legacy.payment;
+  const id = `ORD-${legacy.requestId}`, stored = { id, source: 'web', receiptHash: digest(legacy.receiptToken) };
+  db.data.set(`orders/${id}`, stored);
+  assert.equal(await recoverLegacyCheckout(db, { ...legacy, requestId: randomUUID() }), null);
+  assert.equal(await recoverLegacyCheckout(db, { ...legacy, receiptToken: randomUUID() }), null);
+  assert.equal(await recoverLegacyCheckout(db, { ...legacy, payment: null }), null);
+  db.data.set(`orders/${id}`, { ...stored, payment: { plan: 'full' } });
+  assert.equal(await recoverLegacyCheckout(db, legacy), null);
+  db.data.set(`orders/${id}`, { ...stored, source: 'manual' });
+  assert.equal(await recoverLegacyCheckout(db, legacy), null);
+  const neverRead = { runTransaction() { throw new Error('Invalid capabilities must not look up orders.'); } };
+  assert.equal(await recoverLegacyCheckout(neverRead, { requestId: '../orders', receiptToken: randomUUID() }), null);
+  assert.equal(await recoverLegacyCheckout(neverRead, { requestId: 'a'.repeat(36), receiptToken: randomUUID() }), null);
 });

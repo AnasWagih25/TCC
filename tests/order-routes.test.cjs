@@ -2,7 +2,8 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
 const { loader } = require('./helpers/load-ts.cjs');
-const request = () => new Request('http://localhost/api/orders', { method: 'POST', body: JSON.stringify({ requestId: randomUUID(), receiptToken: randomUUID(), customer: { name: 'Test', phone: '01000000000', email: 'test@example.com', address: '', notes: '' }, items: [{ id: 'p1', quantity: 1, selectedSize: 'Mini' }], deliveryMethod: 'pickup', paymentMethod: 'cash', promoCode: '', expectedTotal: 250 }) });
+const { Database } = require('./helpers/firestore.cjs');
+const request = () => new Request('http://localhost/api/orders', { method: 'POST', body: JSON.stringify({ requestId: randomUUID(), receiptToken: randomUUID(), customer: { name: 'Test', phone: '01000000000', email: 'test@example.com', address: '', notes: '' }, items: [{ id: 'p1', quantity: 1, selectedSize: 'Mini' }], deliveryMethod: 'pickup', paymentMethod: 'cash', payment: { plan: 'deposit', remainingMethod: 'cash', proofToken: 'signed-test-proof' }, promoCode: '', expectedTotal: 250 }) });
 const responseMocks = { 'next/server': { NextResponse: { json: (data, options) => Response.json(data, options) }, after: () => {} } };
 test('checkout never returns a successful order when persistence fails', async () => {
   const load = loader({ ...responseMocks, '@/lib/firebase-admin': { serverFirebaseConfigured: () => true, adminDatabase: () => ({}) }, '@/lib/order-store': { persistCheckout: async () => { throw new Error('Database unavailable'); } }, '@/lib/order-notifications': { sendOrderNotification: async () => {} } }, { console: { error() {} } });
@@ -14,7 +15,7 @@ test('checkout confirms persisted orders before email and retains queued work wh
   const response = await load('src/app/api/orders/route.ts').POST(request()); assert.equal(response.status, 201); assert.equal((await response.json()).order.id, 'ORD-saved'); assert.equal(callbacks.length, 1); await callbacks[0]();
 });
 test('unconfigured checkout fails explicitly without claiming success', async () => {
-  const load = loader({ ...responseMocks, '@/lib/firebase-admin': { serverFirebaseConfigured: () => false } });
+  const load = loader({ ...responseMocks, '@/lib/firebase-admin': { serverFirebaseConfigured: () => false }, '@/lib/order-store': { persistCheckout: async () => { throw new Error('Unconfigured checkout must not write orders.'); } } });
   const response = await load('src/app/api/orders/route.ts').POST(request()); assert.equal(response.status, 503); assert.equal((await response.json()).definitive, true);
 });
 test('public email payloads cannot send email or replace persisted order data', async () => {
@@ -41,4 +42,44 @@ test('background dashboard retries are staff-only and keep work after the respon
   const allowed = loader({ ...mocks, '@/lib/firebase-admin': { requireAdmin: async () => ({}), adminDatabase: () => ({}) } });
   assert.equal((await allowed('src/app/api/admin/order-emails/route.ts').POST(new Request('https://example.com/api/admin/order-emails'))).status, 202);
   assert.equal(callbacks.length, 1); await callbacks[0]();
+});
+
+test('legacy saved checkout recovery returns only the existing order and does not queue another notification', async () => {
+  const { digest, recoverLegacyCheckout } = loader()('src/lib/order-store.ts');
+  const callbacks = [], requestId = randomUUID(), receiptToken = randomUUID(), id = `ORD-${requestId}`;
+  const db = new Database({ [`orders/${id}`]: { id, source: 'web', total: 250, items: [{ id: 'cake1', quantity: 1 }], receiptHash: digest(receiptToken), requestHash: 'old-private-request-hash' } });
+  let persisted = 0, sent = 0;
+  const load = loader({
+    'next/server': { NextResponse: { json: (data, options) => Response.json(data, options) }, after: callback => callbacks.push(callback) },
+    '@/lib/firebase-admin': { serverFirebaseConfigured: () => true, adminDatabase: () => db },
+    '@/lib/order-store': { recoverLegacyCheckout, persistCheckout: async () => { persisted++; throw new Error('Recovery must not place a new order.'); } },
+    '@/lib/order-notifications': { sendOrderNotification: async () => { sent++; } },
+  });
+  const response = await load('src/app/api/orders/route.ts').POST(new Request('https://example.com/api/orders', { method: 'POST', body: JSON.stringify({ requestId, receiptToken }) }));
+  const data = await response.json();
+  assert.equal(response.status, 200); assert.equal(data.order.id, id);
+  assert.equal(data.order.receiptHash, undefined); assert.equal(data.order.requestHash, undefined);
+  assert.equal(persisted, 0); assert.equal(sent, 0); assert.equal(callbacks.length, 0);
+  assert.equal(db.data.size, 1);
+});
+
+test('missing payment never creates orders through legacy recovery for wrong secrets or unknown references', async () => {
+  const { digest, recoverLegacyCheckout } = loader()('src/lib/order-store.ts');
+  const requestId = randomUUID(), receiptToken = randomUUID(), id = `ORD-${requestId}`;
+  const db = new Database({ [`orders/${id}`]: { id, source: 'web', receiptHash: digest(receiptToken), total: 250 } });
+  let persisted = 0, queued = 0;
+  const load = loader({
+    'next/server': { NextResponse: { json: (data, options) => Response.json(data, options) }, after: () => { queued++; } },
+    '@/lib/firebase-admin': { serverFirebaseConfigured: () => true, adminDatabase: () => db },
+    '@/lib/order-store': { recoverLegacyCheckout, persistCheckout: async () => { persisted++; } },
+    '@/lib/order-notifications': { sendOrderNotification: async () => {} },
+  });
+  const body = await request().json(); delete body.payment;
+  const before = JSON.stringify([...db.data]);
+  for (const changes of [{ requestId, receiptToken: randomUUID() }, { requestId: randomUUID(), receiptToken }, { requestId, receiptToken, payment: null }]) {
+    const response = await load('src/app/api/orders/route.ts').POST(new Request('https://example.com/api/orders', { method: 'POST', body: JSON.stringify({ ...body, ...changes }) }));
+    const data = await response.json();
+    assert.equal(response.status, 400); assert.equal(data.order, undefined); assert.match(data.error, /50% InstaPay/);
+  }
+  assert.equal(persisted, 0); assert.equal(queued, 0); assert.equal(JSON.stringify([...db.data]), before);
 });

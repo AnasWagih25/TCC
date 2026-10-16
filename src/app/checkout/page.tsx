@@ -8,6 +8,8 @@ import { pendingCheckout } from '@/lib/order-client';
 import { deliveryPrice, money } from '@/lib/order-domain';
 import { ShoppingCart, ClipboardList, FileText, Banknote, Truck, CheckCircle2, Store, Clock, MapPin } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import CheckoutPayment from '@/components/CheckoutPayment';
+import type { CheckoutPayment as PaymentSelection } from '@/lib/payment-types';
 
 const CheckoutMap = dynamic(() => import('@/components/CheckoutMap'), { 
   ssr: false, 
@@ -20,7 +22,7 @@ export default function CheckoutPage() {
 
   const [previousReference, setPreviousReference] = useState('');
   useEffect(() => { const frame = requestAnimationFrame(() => { try { const pending = pendingCheckout(sessionStorage); if (pending) setPreviousReference(`ORD-${pending.requestId}`); } catch { /* Storage unavailable. */ } }); return () => cancelAnimationFrame(frame); }, []);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'instapay' | 'telda'>('cash');
+  const [payment, setPayment] = useState<PaymentSelection | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<'delivery' | 'pickup'>('delivery');
@@ -89,6 +91,8 @@ export default function CheckoutPage() {
       }
     }
     
+    if (!payment) { setSubmitError('Attach a matching InstaPay transaction screenshot before placing your order.'); return; }
+
     const orderAddress = deliveryMethod === 'pickup' 
       ? `Pickup (${pickupSettings.address})` 
       : formData.address;
@@ -106,7 +110,8 @@ export default function CheckoutPage() {
       appliedDiscount,
       deliveryMethod,
       appliedDiscount > 0 ? promoCodeInput.trim().toUpperCase() : '',
-      paymentMethod
+      payment.plan === 'full' ? 'instapay' : payment.remainingMethod,
+      payment
     );
     
     router.push(`/success?orderId=${newOrder.id}`);
@@ -467,7 +472,7 @@ export default function CheckoutPage() {
                 ) : location ? (
                   isDeliverable ? (
                     <strong style={{ color: 'var(--ink)' }}>
-                      EGP {deliveryFee.toFixed(2)} {deliveryZoneName ? `(${deliveryZoneName})` : ''} · Confirmed after ordering
+                    EGP {deliveryFee.toFixed(2)} {deliveryZoneName ? `(${deliveryZoneName})` : ''}
                     </strong>
                   ) : (
                     <span style={{ color: '#ffaaaa' }}>Unavailable Location</span>
@@ -492,7 +497,7 @@ export default function CheckoutPage() {
             <div style={{ marginTop: '16px', fontSize: '0.85rem', color: 'var(--pink-light)', background: 'var(--off-white)', padding: '14px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ink)', fontWeight: 600 }}>
                 <Banknote size={16} color="var(--ink)" />
-                {deliveryMethod === 'delivery' ? 'Payment: Cash on Delivery or Instapay / Telda' : 'Payment: Cash on Pickup or Instapay / Telda'}
+                50% InstaPay deposit required · Cash or InstaPay for the balance
               </span>
               <span>·</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--ink)', fontWeight: 600 }}>
@@ -502,21 +507,15 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <label className="checkout-payment-label">
-            Payment method
-            <select value={paymentMethod} onChange={event => setPaymentMethod(event.target.value as typeof paymentMethod)} disabled={submitting}>
-              <option value="cash">Cash on {deliveryMethod === 'pickup' ? 'pickup' : 'delivery'}</option>
-              <option value="instapay">Instapay</option>
-              <option value="telda">Telda</option>
-            </select>
-            <small>Our team confirms receipt of any transfer. Selecting a method does not mark your order as paid.</small>
-          </label>
+          {deliveryMethod === 'pickup' || (location && isDeliverable)
+            ? <CheckoutPayment total={total} disabled={submitting} onChange={setPayment} />
+            : <p className="checkout-transfer">Pin your delivery location above to calculate your exact total and required InstaPay deposit.</p>}
           {previousReference && <div className="checkout-recovery"><strong>Previous submission: {previousReference}</strong><p>Its confirmation was interrupted. Check the original submission before placing a separate order. Any new items in your bag stay here.</p><button type="button" className="text-link" disabled={submitting} onClick={async () => { setSubmitting(true); setSubmitError(''); try { const order = await retryPendingOrder(); router.push(`/success?orderId=${order.id}`); } catch (error) { setSubmitError(error instanceof Error ? error.message : 'The previous submission could not be checked.'); try { if (!pendingCheckout(sessionStorage)) setPreviousReference(''); } catch { /* Storage unavailable. */ } } finally { setSubmitting(false); } }}>Check previous submission</button></div>}
           {submitError && <p className="form-error" role="alert">{submitError}</p>}
           <button 
             type="submit" 
             className="btn btn-primary" 
-            disabled={submitting || (deliveryMethod === 'delivery' && (!isDeliverable || !location))}
+            disabled={submitting || !payment || (deliveryMethod === 'delivery' && (!isDeliverable || !location))}
             style={{ 
               width: '100%', padding: '18px', fontSize: '1.15rem', fontWeight: 700,
               borderRadius: '50px', letterSpacing: '0.02em', boxShadow: 'none',
@@ -524,7 +523,7 @@ export default function CheckoutPage() {
               cursor: (deliveryMethod === 'pickup' || (deliveryMethod === 'delivery' && isDeliverable && location)) ? 'pointer' : 'not-allowed'
             }}
           >
-            {submitting ? 'Placing your order…' : (deliveryMethod === 'pickup' || (deliveryMethod === 'delivery' && isDeliverable && location)) ? 'Confirm & Place Order' : 'Pin Location on Map'}
+            {submitting ? 'Placing your order…' : (deliveryMethod === 'pickup' || (deliveryMethod === 'delivery' && isDeliverable && location)) ? (payment ? 'Confirm & Place Order' : 'Attach & check payment screenshot') : 'Pin Location on Map'}
           </button>
         </form>
       </div>
