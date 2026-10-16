@@ -23,3 +23,7 @@ Product details and box building now use scoped storefront styles and native dia
 Screenshots: `product-desktop.png`, `box-mobile.png`, `box-mobile-dark.png`.
 
 Browser viewport checks do not replace physical iPhone/Android testing. Real keyboard and safe-area behavior still need a hardware check; the dialogs use safe-area offsets and dynamic viewport sizing. An additional stabilization pass removed imperative viewport resize writes and dialog transforms; repeated clicks now preserve frame dimensions. Reduced-motion behavior is implemented in CSS.
+
+## Live stabilization check
+
+The deployed site preserved an 860×672 frame during eight alternating Normal/Mini size selections. Each click selected its intended size. A full box preserved Kinder ×1, Belgian ×2 and Lotus ×1, calculated EGP 295 and disabled further additions. The combined payment/dialog suite now passes all 94 tests. See `live-box-desktop.png`, `stable-box-mobile.png` and `stable-box-320.png`.
