@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { OrderError } from './order-domain';
 import type { PaymentReceipt } from './payment-types';
+import { amountMatchesPayment } from './payment-types';
 
 const lifetime = 60 * 60 * 1000;
 function secret() {
@@ -26,7 +27,7 @@ export function verifyPaymentProof(token: string, expectedAmount: number): Payme
     const receipt = data.receipt as PaymentReceipt;
     if (data.version !== 1 || !Number.isFinite(data.expires) || data.expires < Date.now() || data.expires > Date.now() + lifetime + 1000) throw new Error();
     if (!receipt || !/^[a-f0-9-]{36}$/i.test(receipt.id) || receipt.path !== `payment-receipts/${receipt.id}.jpg` || !/^[a-f0-9]{64}$/.test(receipt.sha256)) throw new Error();
-    if (!Number.isFinite(receipt.detectedAmount) || receipt.detectedAmount <= 0 || !Number.isFinite(expectedAmount) || Math.round(receipt.detectedAmount * 100) !== Math.round(expectedAmount * 100)) throw new Error();
+    if (!amountMatchesPayment(receipt.detectedAmount, expectedAmount)) throw new Error();
     if (!Number.isFinite(receipt.confidence) || receipt.confidence < 45 || receipt.confidence > 100 || !Number.isFinite(Date.parse(receipt.uploadedAt))) throw new Error();
     return receipt;
   } catch (error) {

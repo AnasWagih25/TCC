@@ -15,7 +15,7 @@ const load = loader({ './payment-proof': { verifyPaymentProof: (token, expectedA
   proofChecks++;
   const receipt = proofs.get(token);
   if (!receipt || expiredProofs.has(token)) throw new OrderError('Your payment screenshot check expired. Upload it again.');
-  if (receipt.detectedAmount !== expectedAmount) throw new OrderError('The payment amount does not match the amount due.');
+  if (!load('src/lib/payment-types.ts').amountMatchesPayment(receipt.detectedAmount, expectedAmount)) throw new OrderError('The payment amount does not match the amount due.');
   return receipt;
 } } });
 const { OrderError, validateCheckout, priceOrder } = load('src/lib/order-domain.ts');
@@ -61,6 +61,24 @@ test('full InstaPay payment leaves no balance and waits for staff confirmation',
   assert.equal(order.payment.plan, 'full'); assert.equal(order.payment.amountSubmitted, 250);
   assert.equal(order.payment.remainingAmount, 0); assert.equal(order.payment.remainingMethod, 'instapay');
   assert.equal(order.paymentMethod, 'instapay'); assert.equal(order.paymentStatus, 'unpaid');
+});
+test('rounded-up transfers persist the actual amount and subtract it from the remaining order balance', async () => {
+  for (const [plan, sent, balance] of [['deposit', 126, 124.01], ['full', 251, 0]]) {
+    const db = database(); db.data.get('products/cake1').price.mini = 250.01;
+    const request = validateCheckout(input({ items: [{ id: 'cake1', quantity: 1, selectedSize: 'Mini', price: 250.01 }], expectedTotal: 250.01, payment: checkoutPayment(sent, plan) }));
+    const order = await persistCheckout(db, request);
+    assert.equal(order.payment.amountSubmitted, sent); assert.equal(order.payment.receipt.detectedAmount, sent); assert.equal(order.payment.remainingAmount, balance);
+    assert.equal(db.data.get(`paymentProofClaims/${order.payment.receipt.sha256}`).amount, sent);
+    assert.equal(order.payment.status, 'pending_review'); assert.equal(order.paymentStatus, 'unpaid');
+    assert.equal(db.data.get('products/cake1').stock, 4);
+  }
+});
+test('rounded deposits cannot be relabeled when the transfer actually covers the full tiny order', async () => {
+  const db = database(); db.data.get('products/cake1').price.mini = 0.99;
+  const request = validateCheckout(input({ items: [{ id: 'cake1', quantity: 1, selectedSize: 'Mini', price: 0.99 }], expectedTotal: 0.99, payment: checkoutPayment(1, 'deposit') }));
+  await assert.rejects(persistCheckout(db, request), /selected payment option/);
+  assert.equal(db.data.get('products/cake1').stock, 5);
+  assert.equal([...db.data.keys()].filter(key => key.startsWith('orders/')).length, 0);
 });
 test('missing screenshots, missing plans, Telda and invalid proof fields cannot enter checkout', () => {
   assert.throws(() => validateCheckout(input({ payment: undefined })), /50% InstaPay/);

@@ -2,6 +2,7 @@ import { copyFile, mkdtemp } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createWorker, type Worker } from 'tesseract.js';
+import { scanGeminiReceipt } from './payment-gemini';
 
 // These runtime assets are explicitly included in the function trace in next.config.ts.
 const modulesPath = path.join(process.cwd(), 'node_modules');
@@ -20,6 +21,7 @@ function localLanguages() {
 }
 
 export async function scanPaymentReceipt(image: Buffer) {
+  if (process.env.GEMINI_API_KEY?.trim()) return scanGeminiReceipt(image);
   const languagePath = await localLanguages();
   let worker: Worker | undefined;
   let finished = false;

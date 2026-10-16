@@ -22,6 +22,13 @@ test('a signed receipt retains only its authenticated metadata and binds the exp
   assert.throws(() => verifyPaymentProof(token, 250.02), /matching the selected payment amount/);
 });
 
+test('signed proofs permit only the exact amount or its whole-pound ceiling and never round down', () => {
+  const { signPaymentProof, verifyPaymentProof } = harness();
+  assert.equal(verifyPaymentProof(signPaymentProof(receipt({ detectedAmount: 126 })), 125.01).detectedAmount, 126);
+  for (const detectedAmount of [125, 125.5, 126.01, 127, 125.014]) assert.throws(() => verifyPaymentProof(signPaymentProof(receipt({ detectedAmount })), 125.01), /matching the selected payment amount/);
+  assert.throws(() => verifyPaymentProof(signPaymentProof(receipt({ detectedAmount: 126 })), 125), /matching the selected payment amount/);
+});
+
 test('changing the amount, screenshot path, hash or expiry invalidates the signature', () => {
   const { signPaymentProof, verifyPaymentProof } = harness();
   const token = signPaymentProof(receipt());

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { adminDatabase, requireAdmin } from '@/lib/firebase-admin';
 import { normalizeOrderPayment } from '@/lib/admin-orders';
-import { money, OrderError } from '@/lib/order-domain';
-import { paymentAmounts } from '@/lib/payment-types';
+import { OrderError } from '@/lib/order-domain';
+import { matchPaymentPlan, remainingAfterPayment } from '@/lib/payment-types';
 
 export const runtime = 'nodejs';
 
@@ -25,8 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const order = snapshot.data()!;
       const payment = normalizeOrderPayment(order.payment);
       if (!payment || typeof order.total !== 'number' || !Number.isFinite(order.total)) throw new OrderError('This order has incomplete payment details. Review it before recording a transfer.', 409);
-      const expected = paymentAmounts(order.total, payment.plan);
-      if (money(payment.amountSubmitted) !== expected.amountDue || money(payment.remainingAmount) !== expected.remainingAmount || money(payment.receipt.detectedAmount) !== expected.amountDue) throw new OrderError('The saved transfer amounts do not match this order. Review its details.', 409);
+      if (matchPaymentPlan(order.total, payment.amountSubmitted) !== payment.plan || payment.receipt.detectedAmount !== payment.amountSubmitted || payment.remainingAmount !== remainingAfterPayment(order.total, payment.amountSubmitted)) throw new OrderError('The saved transfer amounts do not match this order. Review its details.', 409);
       const now = new Date().toISOString();
       let paymentStatus = order.paymentStatus;
       if (action === 'verify_transfer') {

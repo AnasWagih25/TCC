@@ -4,17 +4,21 @@ Web checkout requires a screenshot for a 50% deposit or full payment to:
 
 https://ipn.eg/S/halamorshdy/instapay/5C7G4R
 
-The amount uses the final total, including delivery and discounts. Half-piastre deposits round up. Deposit balances can be paid by cash on delivery/pickup or InstaPay. Telda is disabled for new payments; historical records remain readable.
+The amount uses the final total, including delivery and discounts. Half-piastre deposits round up. Customers may send the exact required amount or round a decimal amount up to the next whole EGP (for example, EGP 30.88 → EGP 31). Underpayments and other overpayments do not match. Orders record the amount actually submitted and subtract it from the balance; a rounded full payment leaves zero to collect. Deposit balances can be paid by cash on delivery/pickup or InstaPay. Telda is disabled for new payments; historical records remain readable.
 
 ## Screenshot checking
 
-The server scans English/Arabic text with bundled Tesseract models. One readable EGP amount must match the deposit or full total. Ambiguous, unreadable, foreign-currency and incorrect amounts do not unlock checkout. The detected amount identifies deposit/full payment. Changing the total or payment option requires a matching scan.
+With `GEMINI_API_KEY` configured, the server sends the normalized screenshot inline to Google Gemini for English/Arabic transcription. The default model is `gemini-3.5-flash-lite`; `GEMINI_RECEIPT_MODEL` can override it. The key travels only in a server-side request header and is never exposed to the browser or committed. The [Interactions API](https://ai.google.dev/api/interactions-api) request uses a strict JSON schema, a 40-second deadline, `store: false` and no tools or conversation history. Google’s normal service data policies still apply; `store: false` opts out of saved interaction history rather than promising zero provider retention.
+
+The model does not receive the expected order amount. The server independently parses its verbatim transcription and checks the currency, transfer status, readability, amount bounds and agreement before matching the required deposit/full total. Ambiguous, unreadable, foreign-currency and incorrect amounts do not unlock checkout. The detected amount identifies deposit/full payment. Changing the total or payment option requires a matching scan. Gemini failures do not silently switch to a different scanner.
+
+If no Gemini key is configured, the existing bundled English/Arabic Tesseract scanner remains available for local development and deployments without an external provider. Live production is configured to use Gemini. Checkout discloses Google processing before screenshot upload.
 
 A signed, one-hour proof binds the private screenshot and amount. The server recalculates the order and checks the proof before committing the order, stock, email job and screenshot claim together. The same screenshot cannot fund another order. An identical saved order can still be recovered after the proof expires.
 
 JPEG/PNG/WebP files are decoded, checked and normalized. Matching screenshots are stored without public download tokens under `payment-receipts/`. Invalid scans are not stored. Public Storage rules deny access; authorized staff read screenshots through a private server route. Raw OCR text is not saved or emailed.
 
-Scans are limited to eight per client per ten minutes. Existing Firebase server credentials and the existing order email retry secret sign proofs; `PAYMENT_PROOF_SECRET` can optionally provide a separate secret. No external OCR account is required.
+Scans are limited to eight per client per ten minutes. Existing Firebase server credentials and the existing order email retry secret sign proofs; `PAYMENT_PROOF_SECRET` can optionally provide a separate secret. Configure `GEMINI_API_KEY` as a production secret in Vercel, never as a `NEXT_PUBLIC_` variable. API usage is billed against its Google AI Studio project.
 
 **An amount match does not confirm bank settlement, receipt authenticity or the recipient’s credit. Screenshots can be edited.** Staff must compare the screenshot against money received in the bakery’s account. Checkout, email and admin distinguish the automated match from confirmed funds.
 

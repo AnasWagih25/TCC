@@ -47,6 +47,20 @@ test('full InstaPay screenshots are identified as full payment', async () => {
   assert.equal(result.status, 200); assert.equal((await result.json()).plan, 'full');
 });
 
+test('rounded-up screenshots select the correct plan while amounts between accepted values fail', async () => {
+  for (const [amount, plan] of [[126, 'deposit'], [251, 'full']]) {
+    const { POST } = harness({ amount }), result = await POST(request({ total: 250.01 }));
+    const data = await result.json();
+    assert.equal(result.status, 200); assert.equal(data.plan, plan); assert.equal(data.receipt.detectedAmount, amount);
+  }
+  for (const amount of [125, 125.5, 126.01, 252]) {
+    const { POST, calls } = harness({ amount }), result = await POST(request({ total: 250.01 }));
+    assert.equal(result.status, 422); assert.equal(calls.saves.length, 0); assert.equal(calls.signatures.length, 0);
+  }
+  const tiny = harness({ amount: 1 }), result = await tiny.POST(request({ total: 0.99 }));
+  assert.equal(result.status, 200); assert.equal((await result.json()).plan, 'full');
+});
+
 test('wrong amounts and unclear OCR never create a saved receipt or signed proof', async () => {
   for (const options of [{ amount: 500 }, { confidence: 44 }]) {
     const { POST, calls } = harness(options), result = await POST(request());

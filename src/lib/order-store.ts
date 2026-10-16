@@ -4,7 +4,7 @@ import type { Category, Order, Product, PromoCode } from '@/context/CartContext'
 import { type CheckoutRequest, OrderError, priceOrder } from './order-domain';
 import { defaultPickupSettings, resolvePickupSettings, type PickupSettings } from './pickup';
 import { defaultCategories } from './catalog-defaults';
-import { paymentAmounts } from './payment-types';
+import { matchPaymentPlan, paymentAmounts, remainingAfterPayment } from './payment-types';
 import { verifyPaymentProof } from './payment-proof';
 
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -50,8 +50,11 @@ export async function persistCheckout(db: Firestore, request: CheckoutRequest): 
     const categories = categoryDocs.empty ? defaultCategories : categoryDocs.docs.map(doc => ({ ...doc.data(), id: doc.id }) as Category);
     const pickup = pickupDoc.exists ? resolvePickupSettings(pickupDoc.data() as PickupSettings) : defaultPickupSettings;
     const priced = priceOrder(request, products, categories, promoDoc.exists ? promoDoc.data() as PromoCode : null, pickup);
-    const { amountDue, remainingAmount } = paymentAmounts(priced.total, request.payment.plan);
+    const { amountDue } = paymentAmounts(priced.total, request.payment.plan);
     const receipt = verifyPaymentProof(request.payment.proofToken, amountDue);
+    if (matchPaymentPlan(priced.total, receipt.detectedAmount) !== request.payment.plan) throw new OrderError('The screenshot does not match the selected payment option. Review your transfer and scan it again.');
+    const amountSubmitted = receipt.detectedAmount;
+    const remainingAmount = remainingAfterPayment(priced.total, amountSubmitted);
     const claimRef = db.collection('paymentProofClaims').doc(receipt.sha256);
     const claim = await transaction.get(claimRef);
     if (claim.exists) throw new OrderError('This payment screenshot has already been submitted with another order. Contact the bakery if you need help.', 409);
@@ -60,12 +63,12 @@ export async function persistCheckout(db: Firestore, request: CheckoutRequest): 
       id, date: new Date().toISOString(), source: 'web', deliveryMethod: request.deliveryMethod,
       customer, items: priced.items, subtotal: priced.subtotal, total: priced.total, deliveryFee: priced.deliveryFee,
       discount: priced.discount, promoCode: request.promoCode, paymentMethod: request.paymentMethod, paymentStatus: 'unpaid',
-      payment: { plan: request.payment.plan, amountSubmitted: amountDue, remainingAmount, remainingMethod: request.payment.remainingMethod, status: 'pending_review', receipt },
+      payment: { plan: request.payment.plan, amountSubmitted, remainingAmount, remainingMethod: request.payment.remainingMethod, status: 'pending_review', receipt },
       status: 'pending', email: { status: 'pending', attempts: 0 },
       ...(request.deliveryMethod === 'pickup' ? { pickupSnapshot: pickup } : {}),
     };
     transaction.create(orderRef, { ...order, receiptHash, requestHash });
-    transaction.create(claimRef, { orderId: id, receiptId: receipt.id, amount: amountDue, submittedAt: order.date });
+    transaction.create(claimRef, { orderId: id, receiptId: receipt.id, amount: amountSubmitted, submittedAt: order.date });
     for (const [productId, count] of priced.quantities) transaction.update(db.collection('products').doc(productId), { stock: products.find(product => product.id === productId)!.stock - count });
     transaction.create(db.collection('orderEmailJobs').doc(id), { state: 'pending', attempts: 0, nextAttemptAt: 0, leaseUntil: 0 });
     return order;
