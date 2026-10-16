@@ -1,0 +1,24 @@
+{
+  "orderId": "ORD-a26abd98-1b59-41b8-8ac9-40b879a84a95",
+  "createdAt": "2026-10-16T09:06:57.192Z",
+  "source": "web",
+  "item": "Classic Belgian Milk Chocolate",
+  "unitPrice": 395,
+  "quantity": 1,
+  "subtotal": 395,
+  "discount": 19.75,
+  "total": 375.25,
+  "paymentMethod": "cash",
+  "paymentStatus": "unpaid",
+  "fulfillment": "pickup",
+  "customTextPreserved": true,
+  "contactsAndNotesVerified": true,
+  "pickupSnapshotVerified": true,
+  "email": {
+    "status": "sent",
+    "attempts": 1,
+    "sentAt": "2026-10-16T09:06:58.818Z"
+  },
+  "inboxDeliveryVerified": false,
+  "cleanedUp": true
+}

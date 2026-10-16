@@ -1,0 +1,22 @@
+{
+  "firestore": {
+    "name": "29890e14-7da5-4796-b763-ce460218d08d",
+    "createTime": "Sun, 03 May 2026 20:12:54 GMT",
+    "source": [
+      {
+        "content": "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read: if true;\n    }\n    \n    match /settings/{document=**} {\n      allow write: if request.auth != null;\n    }\n    \n    match /products/{productId} {\n      allow update: if true; \n      allow create, delete: if request.auth != null;\n    }\n\n    // Orders: anyone can create (customers placing orders),\n    // only admins can update or delete\n    match /orders/{orderId} {\n      allow create: if true;\n      allow update, delete: if request.auth != null;\n    }\n  }\n}\n",
+        "name": "firestore.rules"
+      }
+    ]
+  },
+  "storage": {
+    "name": "82abf25d-99b2-45be-8e25-c50de64ec68a",
+    "createTime": "Wed, 29 Apr 2026 20:48:13 GMT",
+    "source": [
+      {
+        "content": "rules_version = '2';\nservice firebase.storage {\n  match /b/{bucket}/o {\n    match /{allPaths=**} {\n      // Anyone can see the images\n      allow read: if true; \n      // Only logged-in admins can upload or delete images\n      allow write: if request.auth != null; \n    }\n  }\n}\n",
+        "name": "storage.rules"
+      }
+    ]
+  }
+}
